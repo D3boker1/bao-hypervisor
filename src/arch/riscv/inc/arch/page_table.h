@@ -41,6 +41,12 @@
 #define PTE_ACCESS (1ULL << 6)
 #define PTE_DIRTY (1ULL << 7)
 
+#define PTE_PBMT1  (1ULL << 61)
+#define PTE_PBMT2 (1ULL << 62)
+#define PTE_N (1ULL << 63)
+
+#define PTE_FLAGS_NON_LEAF_PTE_MSK (~(PTE_N | PTE_PBMT2 | PTE_PBMT1 | PTE_DIRTY | PTE_ACCESS | PTE_USER)) //0x2F //0b00101111
+
 #define PTE_RO (PTE_READ)
 #define PTE_RW (PTE_READ | PTE_WRITE)
 #define PTE_XO (PTE_EXECUTE)
@@ -83,9 +89,17 @@ typedef uint64_t pte_t;
 
 struct page_table;
 
-static inline void pte_set(pte_t* pte, paddr_t addr, pte_t flags)
+static inline void pte_set(pte_t* pte, uint64_t addr, uint64_t type,
+                           uint64_t flags)
 {
-    *pte = ((addr & PTE_ADDR_MSK) >> 2) | (flags & PTE_FLAGS_MSK);
+    // type argument encodes the RWX bits of a PTE
+    // If RWX = 0b000 then this PTE is not a leaf-PTE,
+    // which means that the N, PBMT, D, A and U bits are reserved.
+    if(type == PTE_TABLE){
+        *pte = ((addr & PTE_ADDR_MSK) >> 2) | (flags & PTE_FLAGS_NON_LEAF_PTE_MSK) | type;
+    } else {
+        *pte = ((addr & PTE_ADDR_MSK) >> 2) | (flags & PTE_FLAGS_MSK) | type;
+    }
 }
 
 static inline paddr_t pte_addr(pte_t* pte)
