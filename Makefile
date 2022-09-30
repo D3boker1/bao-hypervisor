@@ -47,6 +47,7 @@ core_dir=$(src_dir)/core
 platforms_dir=$(src_dir)/platform
 configs_dir=$(cur_dir)/configs
 CONFIG_REPO?=$(configs_dir)
+irqc_arch_dir=
 
 ifeq ($(CONFIG_BUILTIN), y)
 ifeq ($(CONFIG),)
@@ -73,7 +74,6 @@ cpu_arch_dir=$(src_dir)/arch/$(ARCH)
 cpu_impl_dir=$(cpu_arch_dir)/impl/$(CPU)
 -include $(cpu_arch_dir)/arch.mk
 
-
 build_dir:=$(cur_dir)/build/$(PLATFORM)
 builtin_build_dir:=$(build_dir)/builtin-configs
 bin_dir:=$(cur_dir)/bin/$(PLATFORM)
@@ -84,6 +84,11 @@ directories:=$(build_dir) $(bin_dir) $(builtin_build_dir)
 
 src_dirs:= $(cpu_arch_dir) $(cpu_impl_dir) $(lib_dir) $(core_dir)\
 	$(platform_dir) $(addprefix $(drivers_dir)/, $(drivers))
+# In case to be a riscv arch irqc_arch_dir will be non-empty
+# so, add the board specific interrupt controller
+ifneq ($(irqc_arch_dir),)
+src_dirs+= $(irqc_arch_dir)
+endif
 inc_dirs:=$(addsuffix /inc, $(src_dirs))
 
 # Setup list of objects for compilation
@@ -91,6 +96,11 @@ inc_dirs:=$(addsuffix /inc, $(src_dirs))
 
 objs-y:=
 objs-y+=$(addprefix $(cpu_arch_dir)/, $(cpu-objs-y))
+# In case to be a riscv arch irqc_arch_dir will be non-empty
+# so, add the board specific interrupt controller objects
+ifneq ($(irqc_arch_dir),)
+objs-y+=$(addprefix $(irqc_arch_dir)/, $(irqc-objs-y))
+endif
 objs-y+=$(addprefix $(lib_dir)/, $(lib-objs-y))
 objs-y+=$(addprefix $(core_dir)/, $(core-objs-y))
 objs-y+=$(addprefix $(platform_dir)/, $(boards-objs-y))

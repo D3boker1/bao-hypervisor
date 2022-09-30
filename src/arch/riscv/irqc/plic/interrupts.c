@@ -12,7 +12,6 @@
  * license. See the COPYING file in the top-level directory for details.
  *
  */
-
 #include <bao.h>
 #include <interrupts.h>
 

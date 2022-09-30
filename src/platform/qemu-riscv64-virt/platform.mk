@@ -3,6 +3,9 @@ ARCH:=riscv
 # CPU definition
 CPU:=
 
+# Interrupt controller definition
+IRQC:=plic
+
 drivers := sbi_uart
 
 platform-cppflags =
