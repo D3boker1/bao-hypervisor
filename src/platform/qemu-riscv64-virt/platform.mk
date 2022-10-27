@@ -4,7 +4,8 @@ ARCH:=riscv
 CPU:=
 
 # Interrupt controller definition
-IRQC:=plic
+#IRQC:=plic
+IRQC:=aia
 
 drivers := sbi_uart
 
