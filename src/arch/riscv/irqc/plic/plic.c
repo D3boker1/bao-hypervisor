@@ -13,7 +13,7 @@
  *
  */
 
-#include <arch/plic.h>
+#include <plic.h>
 #include <interrupts.h>
 #include <cpu.h>
 

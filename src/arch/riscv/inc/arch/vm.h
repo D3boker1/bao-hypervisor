@@ -17,7 +17,7 @@
 #define __ARCH_VM_H__
 
 #include <bao.h>
-#include <arch/vplic.h>
+#include <vxplic.h>
 #include <arch/sbi.h>
 
 #define REG_RA (1)
@@ -53,7 +53,7 @@
 #define REG_T6 (31)
 
 struct vm_arch {
-    struct vplic vplic;
+    struct virqc vxplic;
 };
 
 struct vcpu_arch {
@@ -120,12 +120,12 @@ void vcpu_arch_entry();
 typedef struct vcpu vcpu_t;
 static inline void vcpu_arch_inject_hw_irq(vcpu_t *vcpu, uint64_t id)
 {
-    vplic_inject(vcpu, id);
+    vcpu_arch_inject_hw_irq_vxplic(vcpu, id);
 }
 
 static inline void vcpu_arch_inject_irq(vcpu_t *vcpu, uint64_t id)
 {
-    vplic_inject(vcpu, id);
+    vcpu_arch_inject_hw_irq_vxplic(vcpu, id);
 }
 
 #endif /* __ARCH_VM_H__ */
