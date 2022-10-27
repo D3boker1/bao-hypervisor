@@ -13,7 +13,7 @@ struct platform_desc platform = {
     },
 
     .arch = {
-        .plic_base = 0xc000000,
+        .plic_base = XPLIC_BASE_ADDR,
     }
 
 };
