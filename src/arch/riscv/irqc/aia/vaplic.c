@@ -53,6 +53,7 @@ static int vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu){
     return vm_translate_to_pcpuid(vcpu->vm, vcpu->id);
 }
 
+static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu);
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id); 
 static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id);
 static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id);
@@ -129,11 +130,12 @@ static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
         }
     }
 
+    uint32_t domaincgfIE = (vaplic_get_domaincfg(vcpu) >> 8) & 0x1;
     uint32_t threshold = vaplic_get_ithreshold(vcpu, hart_index);
     uint32_t delivery = vaplic_get_idelivery(vcpu, hart_index);
     uint32_t force =  vaplic_get_iforce(vcpu, hart_index);
-    if ((max_prio < threshold || threshold == 0 || force == 1) && delivery == 1){
-        vxplic->topi_claimi[hart_index] = (hart_index << 18) | prio;
+    if ((max_prio < threshold || threshold == 0 || force == 1) && 
+         delivery == 1 && domaincgfIE == 1){
         return int_id;
     }
     else{
