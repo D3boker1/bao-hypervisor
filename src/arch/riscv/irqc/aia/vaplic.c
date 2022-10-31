@@ -61,7 +61,7 @@ static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id);
 
 void vaplic_set_hw(struct vm *vm, irqid_t intp_id)
 {
-    if (intp_id <= APLIC_MAX_INTERRUPTS) {
+    if (intp_id < APLIC_MAX_INTERRUPTS) {
         bitmap_set(vm->arch.vxplic.hw,intp_id);
     }
 }
@@ -125,7 +125,7 @@ static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
             if (prio < max_prio) {
                 max_prio = prio;
                 int_id = i;
-                hart_index = (target >> 18) & 0xFFFC;
+                hart_index = (target >> 18) & 0x3FFF;
             }
         }
     }
@@ -136,6 +136,7 @@ static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
     uint32_t force =  vaplic_get_iforce(vcpu, hart_index);
     if ((max_prio < threshold || threshold == 0 || force == 1) && 
          delivery == 1 && domaincgfIE == 1){
+        vxplic->topi_claimi[hart_index] = (int_id << 16) | prio;
         return int_id;
     }
     else{
@@ -313,7 +314,6 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
     spin_lock(&vxplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
         get_bit_from_reg(vxplic->setip[new_val/32], new_val)) {
-        //vxplic->clripnum = new_val;
         clr_bit_from_reg(&vxplic->setip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_clripnum(new_val);
@@ -514,6 +514,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     if (idc_id < vxplic->idc_num){
         ret = vxplic->topi_claimi[idc_id];
+        /** Sepurious intp*/
         if (ret == 0){
             // Clear the virt iforce bit
             vxplic->iforce[idc_id] = 0;
@@ -523,17 +524,16 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
             }
         }
         // Clear the virt pending bit for te read intp
-        set_bit_from_reg(&vxplic->setip[(ret >> 16)/32], (ret >> 16)%32);
+        clr_bit_from_reg(&vxplic->setip[(ret >> 16)/32], (ret >> 16)%32);
         if(vaplic_get_hw(vcpu,(ret >> 16))){
             // Clear the physical pending bit for te read intp
-            aplic_set_pend_num((ret >> 16)%32);
+            aplic_idc_get_claimi(idc_id);
         }
         vaplic_update_hart_line(vcpu);
     }
     return ret;
 }
 // ============================================================================
-
 
 // ====================================================
 /**
@@ -678,9 +678,8 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     
     /** Intp has a valid ID and the virtual interrupt is not pending*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
-        //vaplic_emul_gateway(vcpu, intp_id);
-        if(vxplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_INACTIVE &&
-           vxplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_DETACH){
+        if(vxplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE &&
+           vxplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_DETACH){
             set_bit_from_reg(&vxplic->setip[intp_id/32], intp_id);
         }
         vaplic_update_hart_line(vcpu);
