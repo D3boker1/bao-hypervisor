@@ -36,11 +36,6 @@ struct virqc {
     uint32_t setip[APLIC_MAX_INTERRUPTS/32];
     uint32_t in_clrip[APLIC_MAX_INTERRUPTS/32];
     uint32_t setie[APLIC_MAX_INTERRUPTS/32];
-    uint32_t clrie[APLIC_MAX_INTERRUPTS/32];
-    // uint32_t setipnum;
-    // uint32_t clripnum;
-    // uint32_t setienum;
-    // uint32_t clrienum;
     uint32_t target[APLIC_MAX_INTERRUPTS-1];
     BITMAP_ALLOC(idelivery, APLIC_PLAT_IDC_NUM);
     BITMAP_ALLOC(iforce, APLIC_PLAT_IDC_NUM);

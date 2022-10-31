@@ -100,16 +100,6 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
-// static uint32_t vaplic_emul_gateway(struct vcpu* vcpu, irqid_t intp_id){
-//     // Só tem de verificar se a interrupção pode ou não ficar pend
-//     // Level?
-//     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-//     if(vxplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_INACTIVE &&
-//        vxplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_DETACH){
-//         set_bit_from_reg(&vxplic->setip[intp_id/32], intp_id);
-//     }
-// }
-
 static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     uint32_t max_prio = APLIC_MAX_PRIO;
@@ -175,7 +165,6 @@ static void vaplic_ipi_handler(uint32_t event, uint64_t data)
     }
 }
 
-
 // ============================================================================
 static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
@@ -196,7 +185,7 @@ static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
     return ret;
 }
 
-static uint32_t vaplic_get_srccfg(struct vcpu *vcpu, irqid_t intp_id){
+static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t real_int_id = intp_id - 1;
     uint32_t ret = 0;
 
@@ -207,13 +196,12 @@ static uint32_t vaplic_get_srccfg(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
-static void vaplic_set_srccfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
+static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
     /** If intp is valid and new source config is different from prev. one.*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && 
-        vaplic_get_srccfg(vcpu, intp_id) != new_val) {
-        /** Update virt sourcecfg array */        
+        vaplic_get_sourcecfg(vcpu, intp_id) != new_val) {        
         new_val = (new_val & (0x1 << 10)) ? 0 : new_val & 0x7;
         if(new_val == 2 || new_val == 3)
             new_val = 0;
@@ -223,14 +211,13 @@ static void vaplic_set_srccfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
             aplic_set_sourcecfg(intp_id, new_val);
             if((impl_src[intp_id] == IMPLEMENTED) &&
                 aplic_get_sourcecfg(intp_id) == new_val){
-                printk("BAO: srccfg[%d]= %d\r\n", intp_id, new_val);
                 vxplic->srccfg[intp_id-1] = new_val;
             }
         } else {
             /** If intp is not phys. emul aplic behaviour */
             vxplic->srccfg[intp_id-1] = new_val;
-            vaplic_update_hart_line(vcpu);
         }
+        vaplic_update_hart_line(vcpu);
     }
     spin_unlock(&vxplic->lock);
 }
@@ -255,7 +242,7 @@ static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
                 if(get_bit_from_reg(vxplic->setip[reg], i) && ((new_val >> i) & 1)){
-                    aplic_set_pend_num(i);
+                    aplic_set_pend(i);
                 }
             } else {
                 /** If intp is not phys. emul aplic behaviour */
@@ -271,10 +258,9 @@ static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
     spin_lock(&vxplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
         !get_bit_from_reg(vxplic->setip[new_val/32], new_val)) {
-        //vxplic->setipnum = new_val;
         set_bit_from_reg(&vxplic->setip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
-            aplic_set_pend_num(new_val);
+            aplic_set_pend(new_val);
         } else {
             vaplic_update_hart_line(vcpu);
         }
@@ -360,7 +346,6 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
     spin_lock(&vxplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
         !get_bit_from_reg(vxplic->setie[new_val/32], new_val)) {
-        //vxplic->setienum = new_val;
         set_bit_from_reg(&vxplic->setie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_ienum(new_val);
@@ -396,7 +381,6 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
     spin_lock(&vxplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
         get_bit_from_reg(vxplic->setie[new_val/32], new_val)) {
-        //vxplic->clrienum = new_val;
         clr_bit_from_reg(&vxplic->setie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_clrienum(new_val);
@@ -420,12 +404,14 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
         new_val = (new_val & 0xFFFC00FF);
         if(vaplic_get_hw(vcpu,intp_id)){
             aplic_set_target(intp_id, new_val);
-            if(impl_src[intp_id] == IMPLEMENTED)
+            if(impl_src[intp_id] == IMPLEMENTED && 
+               aplic_get_target(intp_id) == new_val){
                 vxplic->target[intp_id-1] = new_val;
+            }
         } else {
-            vaplic_update_hart_line(vcpu);
             vxplic->target[intp_id-1] = new_val;
         }
+        vaplic_update_hart_line(vcpu);
     }
     spin_unlock(&vxplic->lock);
 }
@@ -440,6 +426,7 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
+/** IDC Functions emulation */
 static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
@@ -556,9 +543,9 @@ static void vaplic_emul_domaincfg_access(struct emul_access *acc){
 static void vaplic_emul_srccfg_access(struct emul_access *acc){
     int intp = (acc->addr & 0xFFF)/4;
     if (acc->write) {
-        vaplic_set_srccfg(cpu.vcpu, intp, vcpu_readreg(cpu.vcpu, acc->reg));
+        vaplic_set_sourcecfg(cpu.vcpu, intp, vcpu_readreg(cpu.vcpu, acc->reg));
     } else {
-        vcpu_writereg(cpu.vcpu, acc->reg, vaplic_get_srccfg(cpu.vcpu, intp));
+        vcpu_writereg(cpu.vcpu, acc->reg, vaplic_get_sourcecfg(cpu.vcpu, intp));
     }
 }
 
