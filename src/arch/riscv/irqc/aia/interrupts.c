@@ -35,11 +35,11 @@ void interrupts_arch_init()
                     ALIGN(sizeof(idc), PAGE_SIZE) / PAGE_SIZE);
 
         fence_sync();
-
+        
         aplic_init();
     }
 
-    /* Wait for master hart to finish plic initialization */
+    /* Wait for master hart to finish aplic initialization */
     cpu_sync_barrier(&cpu_glb_sync);
 
     aplic_idc_init();
@@ -78,7 +78,7 @@ void interrupts_arch_enable(irqid_t int_id, bool en)
             CSRC(sie, SIE_STIE);
     } else {
         aplic_set_ienum(int_id);
-        aplic_set_target(int_id, (cpu.id << 18) | 0x01); //?
+        aplic_set_target(int_id, (cpu.id << 18) | 0x01);
     }
 }
 
