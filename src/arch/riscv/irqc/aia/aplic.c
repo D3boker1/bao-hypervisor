@@ -260,7 +260,5 @@ void aplic_handle(void){
             aplic_idc_get_claimi(idc_id);
         } 
     }
-        } 
-    }
 
 }
