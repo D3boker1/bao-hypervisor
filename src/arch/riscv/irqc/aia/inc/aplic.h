@@ -18,11 +18,7 @@
 #define _APLIC_H_
 
 #include <bao.h>
-//#include <csrs.h>
 #include <plat/aplic.h>
-//#include <stdio.h>
-
-//#define APLIC_PLAT_IDC_NUM (4)
 
 /**==== APLIC Specific types ====*/
 typedef unsigned idcid_t;
@@ -117,7 +113,7 @@ struct aplic_idc {
     uint8_t  reserved[0x18-0x0C];
     uint32_t topi;
     uint32_t claimi;
-}; // IDC structure CANNOT be page aligned.
+}__attribute__((__packed__));; // IDC structure CANNOT be page aligned.
 
 extern uint32_t impl_src[APLIC_MAX_INTERRUPTS];
 
@@ -125,7 +121,6 @@ extern volatile struct aplic_global aplic_domain;
 extern volatile struct aplic_idc idc[APLIC_PLAT_IDC_NUM];
 
 /**==== Initialization Functions ====*/
-
 /**
  * @brief Initialize the aplic domain.
  * 
@@ -139,24 +134,7 @@ void aplic_init(void);
  */
 void aplic_idc_init(void);
 
-/**==== APLIC Domain registers manipulation functions ====*/
-
-/**
- * @brief Write to aplic domaincfg register.
- * AIA Spec. 0.3.2 section 4.5.1
- * 
- * @param val Value to be written into domaincfg
- */
-void aplic_set_domaincfg(uint32_t val);
-
-/**
- * @brief Read from aplic domaincfg register.
- * AIA Spec. 0.3.2 section 4.5.1
- * 
- * @return uint32_t 32 bit value containing domaincfg info.
- */
-uint32_t aplic_get_domaincfg(void);
-
+/**==== Domain functions ====*/
 /**
  * @brief Write to aplic's sourcecfg register
  * 
@@ -179,7 +157,7 @@ uint32_t aplic_get_sourcecfg(irqid_t int_id);
  * 
  * @param int_id Interrupt to be set as pending
  */
-void aplic_set_pend_num(irqid_t int_id);
+void aplic_set_pend(irqid_t int_id);
 
 /**
  * @brief Read the pending value of a given interrut
@@ -214,14 +192,6 @@ bool aplic_get_inclrip(irqid_t int_id);
  * @param int_id Interrupt to be enabled
  */
 void aplic_set_ienum(irqid_t int_id);
-
-/**
- * @brief Read if a given interrupt is enabled
- * 
- * @param intp_id interrupt to evaluate if it is enabled
- * @return uint32_t 
- */
-bool aplic_get_ie(irqid_t intp_id);
 
 /**
  * @brief Clear enable bit be writting to clrie register of a given interrupt. 
@@ -267,25 +237,7 @@ void aplic_set_target(irqid_t int_id, uint32_t val);
  */
 uint32_t aplic_get_target(irqid_t int_id);
 
-/**==== APLIC IDC's registers manipulation functions ====*/
-
-/**
- * @brief Enable/Disable the delivering for a given idc
- * 
- * @param idc_id IDC to enbale/disable the delivering
- * @param en if 0: interrupts delivery disable; if 1: interrupts delivery enable
- */
-void aplic_idc_set_idelivery(idcid_t idc_id, bool en);
-
-/**
- * @brief Read if for a given idc the interrupts are being delivered.
- * 
- * @param idc_id IDC to read.
- * @return true Interrupt delivery is enabled
- * @return false Interrupt delivery is disable
- */
-bool aplic_idc_get_idelivery(idcid_t idc_id);
-
+/**==== IDC functions ====*/
 /**
  * @brief Useful for testing. Seting this register forces an interrupt to
  * be asserted to the corresponding hart
@@ -296,57 +248,6 @@ bool aplic_idc_get_idelivery(idcid_t idc_id);
 void aplic_idc_set_iforce(idcid_t idc_id, bool en);
 
 /**
- * @brief Read if for a given IDC was forced an interrupt
- * 
- * @param idc_id IDC to test
- * @return true if an interrupt were forced
- * @return false if an interrupt were NOT forced
- */
-bool aplic_idc_get_iforce(idcid_t idc_id);
-
-/**
- * @brief Write a new value of threshold for a given IDC 
- * 
- * @param idc_id IDC to set a new value for threshold
- * @param new_th the new value of threshold. It is a value with IPRIOLEN. 
- * 
- * IPRIOLEN is in range 1 to 8 and is an implementation specific.
- * setting threshold for a nonzero value P, inetrrupts with priority of P of higher
- * DO NOT contribute to signaling interrupts to the hart.
- * If 0, all enabled interrupts can contibute to signaling inetrrupts to the hart.
- * Writting a value higher than APLIC minimum priority (maximum number)
- * takes no effect.
- */
-void aplic_idc_set_ithreshold(idcid_t idc_id, uint32_t new_th);
-
-/**
- * @brief Read the current value of threshold for a given IDC.
- * 
- * @param idc_id IDC to read the threshold value
- * @return uint32_t value with the threshold
- */
-uint32_t aplic_idc_get_ithreshold(idcid_t idc_id);
-
-/**
- * @brief Indicates the current highest-priority pending-and-enabled interrupt
- * targeted to this this hart.
- * 
- * @param idc_id IDC to read the highest-priority
- * @return uint32_t returns the interrupt identity and interrupt priority.
- * 
- * Formart:
- * 
- * +-----------+--------------------+------------------------+
- * | Bit-Field |        Name        |      Description       |
- * +-----------+--------------------+------------------------+
- * | 25:16     | Interrupt Identity | Equal to source number |
- * | 7:0       | Interrupt priority | Interrupt priority     |
- * +-----------+--------------------+------------------------+
- * 
- */
-uint32_t aplic_idc_get_topi(idcid_t idc_id);
-
-/**
  * @brief As the same value as topi. However, reading claimi has the side effect
  * of clearing the pending bit for the reported inetrrupt identity.
  * 
@@ -355,9 +256,11 @@ uint32_t aplic_idc_get_topi(idcid_t idc_id);
  */
 uint32_t aplic_idc_get_claimi(idcid_t idc_id);
 
+/**==== APLIC Interrupt handler ====*/
 /**
  * @brief Handles an incomming interrupt in irq controller.
  * 
  */
 void aplic_handle(void);
+
 #endif //_APLIC_H_
