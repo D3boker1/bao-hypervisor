@@ -247,12 +247,20 @@ uint32_t aplic_idc_get_claimi(idcid_t idc_id)
     return ret;
 }
 
+/**==== APLIC Interrupt handler ====*/
 void aplic_handle(void){
     uint32_t intp_identity;
     idcid_t idc_id = cpu.id;
 
     intp_identity = (idc[idc_id].claimi >> INTP_IDENTITY) & INTP_IDENTITY_MASK;
     if(intp_identity > 0){
-        interrupts_handle(intp_identity);
+        enum irq_res res = interrupts_handle(intp_identity);
+        if (res == HANDLED_BY_HYP){
+            /** Read the claimi to clear the interrupt */
+            aplic_idc_get_claimi(idc_id);
+        } 
     }
+        } 
+    }
+
 }
