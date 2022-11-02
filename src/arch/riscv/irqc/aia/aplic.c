@@ -20,21 +20,14 @@
 #include <interrupts.h>
 
 /**==== APLIC fields and masks defines ====*/
-#define APLIC_DOMAINCFG_DM              (1U << 2)
-#define APLIC_DOMAINCFG_IE              (1U << 8)
 #define APLIC_DOMAINCFG_CTRL_MASK       (0x1FF)
 
-#define SRCCFG_D                        (1U << 10)
-#define SRCCFG_SM                       (1U << 0) | (1U << 1) | (1U << 2)
 #define DOMAINCFG_DM                    (1U << 2)
 
 #define INTP_IDENTITY                   (16)
 #define INTP_IDENTITY_MASK              (0x3FF)
 
-#define APLIC_TARGET_HART_IDX_SHIFT     (18)
-#define APLIC_TARGET_IPRIO_MASK         (0xFF)
 //#define APLIC_MAX_GEI                 (0)
-#define APLIC_TARGET_PRIO_DEFAULT       (1)
 
 #define APLIC_DISABLE_IDELIVERY	        (0)
 #define APLIC_ENABLE_IDELIVERY	        (1)
@@ -116,8 +109,8 @@ void aplic_set_sourcecfg(irqid_t int_id, uint32_t val)
 {
     uint32_t real_int_id = int_id - 1;
     if(impl_src[real_int_id] == IMPLEMENTED){
-        if(!(val & SRCCFG_D) && 
-            ((val & (SRCCFG_SM)) != 2) && ((val & (SRCCFG_SM)) != 3)){
+        if(!(val & APLIC_SRCCFG_D) && 
+            ((val & (APLIC_SRCCFG_SM)) != 2) && ((val & (APLIC_SRCCFG_SM)) != 3)){
                 aplic_domain.sourcecfg[real_int_id] = val & APLIC_SOURCECFG_SM_MASK;
         }
     }

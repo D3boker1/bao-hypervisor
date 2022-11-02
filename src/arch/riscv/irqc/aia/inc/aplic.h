@@ -78,6 +78,19 @@ typedef unsigned irqid_t;
 #define APLIC_IDC_TOPI_OFF              (0x18)
 #define APLIC_IDC_CLAIMI_OFF            (0x1C)
 
+/**==== APLIC fields and masks defines ====*/
+#define APLIC_DOMAINCFG_DM              (1U << 2)
+#define APLIC_DOMAINCFG_IE              (1U << 8)
+#define APLIC_DOMAINCFG_RO80            (0x80 << 24)
+
+#define APLIC_SRCCFG_D                  (1U << 10)
+#define APLIC_SRCCFG_SM                 ((1U << 0) | (1U << 1) | (1U << 2))
+
+#define APLIC_TARGET_HART_IDX_SHIFT     (18)
+#define APLIC_TARGET_HART_IDX_MASK      (0x3FFF)
+#define APLIC_TARGET_IPRIO_MASK         (0xFF)
+#define APLIC_TARGET_PRIO_DEFAULT       (1)
+#define APLIC_TARGET_MASK               (0xFFFC00FF)
 /**==== Data structures for APLIC devices ====*/
 struct aplic_global {
     uint32_t domaincfg;
