@@ -488,7 +488,6 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
             if(impl_src[intp_id] == IMPLEMENTED && 
                aplic_get_target(intp_id) == new_val){
                 vxplic->target[intp_id-1] = new_val;
-                printk("vxplic->target[intp_id-1] = 0x%x", vxplic->target[intp_id-1]);
             }
         } else {
             vxplic->target[intp_id-1] = new_val;
@@ -509,6 +508,7 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     }
     
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS){
+        /** Translate the physical cpu into the its virtual pair */
         pcpu_id = vxplic->target[intp_id -1] >> APLIC_TARGET_HART_IDX_SHIFT;
         vcpu_id = vm_translate_to_vcpuid(vcpu->vm, pcpu_id);
         ret = vxplic->target[intp_id -1] & APLIC_TARGET_IPRIO_MASK;
