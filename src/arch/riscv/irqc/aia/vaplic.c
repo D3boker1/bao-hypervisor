@@ -459,20 +459,36 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
 
 static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
+    uint32_t hart_index = (new_val >> APLIC_TARGET_HART_IDX_SHIFT) & APLIC_TARGET_HART_IDX_MASK;
+    cpuid_t pcpu_id = vm_translate_to_pcpuid(vcpu->vm, hart_index);
 
     spin_lock(&vxplic->lock);
+    if(pcpu_id == INVALID_CPUID){
+        /** If the hart index is invalid, make it vcpu = 0 
+         *  and read the new pcpu.
+         *  Software should not write anything other than legal 
+         *  values to such a field */
+        pcpu_id = vm_translate_to_pcpuid(vcpu->vm, 0);
+    }
+    /** Write the physical CPU in hart index */
+    new_val &= APLIC_TARGET_IPRIO_MASK;
+    new_val |= (pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+
     if (intp_id > 0  && intp_id < APLIC_MAX_INTERRUPTS && 
         vaplic_get_target(vcpu, intp_id) != new_val) {
-        if ((new_val & 0xFF) == 0){
-            new_val &= ~0xFF;
-            new_val |= 0x1;
+
+        new_val &= APLIC_TARGET_MASK;
+        /** If prio is 0, set to 1 (max)*/
+        if ((new_val & APLIC_TARGET_IPRIO_MASK) == 0){
+            new_val |= APLIC_TARGET_PRIO_DEFAULT;
         }
-        new_val = (new_val & 0xFFFC00FF);
-        if(vaplic_get_hw(vcpu,intp_id)){
+        
+        if(vaplic_get_hw(vcpu, intp_id)){
             aplic_set_target(intp_id, new_val);
             if(impl_src[intp_id] == IMPLEMENTED && 
                aplic_get_target(intp_id) == new_val){
                 vxplic->target[intp_id-1] = new_val;
+                printk("vxplic->target[intp_id-1] = 0x%x", vxplic->target[intp_id-1]);
             }
         } else {
             vxplic->target[intp_id-1] = new_val;
@@ -484,11 +500,20 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
 
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
-
-    if(intp_id == 0)
-        return ret;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (intp_id < APLIC_MAX_INTERRUPTS) ret = vxplic->target[intp_id -1];
+    cpuid_t pcpu_id = 0;
+    cpuid_t vcpu_id = 0;
+    
+    if(intp_id == 0){
+        return ret;
+    }
+    
+    if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS){
+        pcpu_id = vxplic->target[intp_id -1] >> APLIC_TARGET_HART_IDX_SHIFT;
+        vcpu_id = vm_translate_to_vcpuid(vcpu->vm, pcpu_id);
+        ret = vxplic->target[intp_id -1] & APLIC_TARGET_IPRIO_MASK;
+        ret |= (vcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+    }
     return ret;
 }
 
