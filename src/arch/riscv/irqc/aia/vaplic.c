@@ -19,8 +19,6 @@
  *          Desta forma, deixo de precisar das func. vaplic_emul_x_access.
  *          Como paramentro da função, vai o index do intp_id/reg/idc_id
  * 
- * TODO: Implementar as funções set, a aplic_emul, ipi.
- * TODO: Avaliar se posso tirar da struct os reg XXXnum
  */
 #include <vaplic.h>
 #include <vm.h>
@@ -31,14 +29,33 @@
 #include <arch/csrs.h>
 #define APLIC_MAX_PRIO 6
 
+/**
+ * @brief Get the bit from reg object
+ * 
+ * @param reg 
+ * @param bit 
+ * @return unsigned 
+ */
 static inline unsigned get_bit_from_reg(uint32_t reg, size_t bit){
     return (reg & (1 << bit)) ? 1U : 0U;
 }
 
+/**
+ * @brief Set the bit from reg object
+ * 
+ * @param reg 
+ * @param bit 
+ */
 static void set_bit_from_reg(uint32_t* reg, size_t bit){
     *reg |=  (1 << bit);
 }
 
+/**
+ * @brief Clear the bit from reg object
+ * 
+ * @param reg 
+ * @param bit 
+ */
 static void clr_bit_from_reg(uint32_t* reg, size_t bit){
     *reg &=  ~(1 << bit);
 }
@@ -100,6 +117,14 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
+/**
+ * @brief Emulates the notifier aplic module.
+ *        (02/11/2022): computes the next pending bit.
+ *        Only direct mode is supported. 
+ * 
+ * @param vcpu 
+ * @return irqid_t 
+ */
 static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     uint32_t max_prio = APLIC_MAX_PRIO;
@@ -138,6 +163,11 @@ enum {UPDATE_HART_LINE};
 static void vaplic_ipi_handler(uint32_t event, uint64_t data);
 CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
 
+/**
+ * @brief Update the CPU interrupt line.
+ * 
+ * @param vcpu 
+ */
 static void vaplic_update_hart_line(struct vcpu* vcpu) 
 {
     int pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu);
@@ -156,6 +186,12 @@ static void vaplic_update_hart_line(struct vcpu* vcpu)
     }
 }
 
+/**
+ * @brief Processes an incoming event.
+ * 
+ * @param event the event id
+ * @param data
+ */
 static void vaplic_ipi_handler(uint32_t event, uint64_t data) 
 {
     switch(event) {
@@ -166,6 +202,12 @@ static void vaplic_ipi_handler(uint32_t event, uint64_t data)
 }
 
 // ============================================================================
+/**
+ * @brief Write to domaincfg register a new value.
+ * 
+ * @param vcpu 
+ * @param new_val The new value to write to domaincfg
+ */
 static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
@@ -178,6 +220,12 @@ static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     vaplic_update_hart_line(vcpu);
 }
 
+/**
+ * @brief Read from domaincfg
+ * 
+ * @param vcpu 
+ * @return uint32_t domaincfg value 
+ */
 static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
@@ -185,6 +233,13 @@ static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
     return ret;
 }
 
+/**
+ * @brief Read from a given interrupt sourcecfg register
+ * 
+ * @param vcpu 
+ * @param intp_id Interrupt id to read
+ * @return uint32_t 
+ */
 static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t real_int_id = intp_id - 1;
     uint32_t ret = 0;
@@ -196,6 +251,13 @@ static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
+/**
+ * @brief Write to sourcecfg register of a given interrupt
+ * 
+ * @param vcpu 
+ * @param intp_id interrupt id to write to
+ * @param new_val value to write to sourcecfg
+ */
 static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
@@ -214,7 +276,7 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
                 vxplic->srccfg[intp_id-1] = new_val;
             }
         } else {
-            /** If intp is not phys. emul aplic behaviour */
+            /** If intp is not phys. update virtual only */
             vxplic->srccfg[intp_id-1] = new_val;
         }
         vaplic_update_hart_line(vcpu);
