@@ -213,8 +213,8 @@ static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     spin_lock(&vxplic->lock);
     /** Update only the virtual domaincfg */
     /** Only Interrupt Enable is configurable. */
-    new_val = (new_val & (0x1 << 8));
-    vxplic->domaincfg = new_val | (0x80 << 24);
+    new_val &= APLIC_DOMAINCFG_IE;
+    vxplic->domaincfg = new_val | APLIC_DOMAINCFG_RO80;
     spin_unlock(&vxplic->lock);
 
     vaplic_update_hart_line(vcpu);
@@ -264,13 +264,14 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
     /** If intp is valid and new source config is different from prev. one.*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && 
         vaplic_get_sourcecfg(vcpu, intp_id) != new_val) {        
-        new_val = (new_val & (0x1 << 10)) ? 0 : new_val & 0x7;
+        new_val &= (new_val & APLIC_SRCCFG_D) ? 0 : APLIC_SRCCFG_SM;
         if(new_val == 2 || new_val == 3)
             new_val = 0;
         /** Is this intp a phys. intp? */
         if(vaplic_get_hw(vcpu, intp_id)){
             /** Update in phys. aplic */
             aplic_set_sourcecfg(intp_id, new_val);
+            /** If phys aplic was succe. written, then update virtual*/
             if((impl_src[intp_id] == IMPLEMENTED) &&
                 aplic_get_sourcecfg(intp_id) == new_val){
                 vxplic->srccfg[intp_id-1] = new_val;
@@ -294,20 +295,23 @@ static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
 static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
-    if (reg < APLIC_MAX_INTERRUPTS/32 && 
+    if (reg == 0) new_val &= 0xFFFFFFFE;
+    if (reg < APLIC_NUM_SETIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
-        /** Update virt setip array */
-        if (reg == 0) new_val &= 0xFFFFFFFE;
-        vxplic->setip[reg] = new_val;
-        for(int i = 0; i < APLIC_MAX_INTERRUPTS/32; i++){
+        vxplic->setip[reg] = 0;
+        for(int i = 0; i < APLIC_NUM_SETIx_REGS; i++){
             /** Is this intp a phys. intp? */
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
                 if(get_bit_from_reg(vxplic->setip[reg], i) && ((new_val >> i) & 1)){
                     aplic_set_pend(i);
+                    if(aplic_get_pend(i)){
+                        vxplic->setip[reg] |= new_val & (1 << i);
+                    }
                 }
             } else {
                 /** If intp is not phys. emul aplic behaviour */
+                vxplic->setip[reg] |= new_val & (1 << i);
                 vaplic_update_hart_line(vcpu);
             }
         }
