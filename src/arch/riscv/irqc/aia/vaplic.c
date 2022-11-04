@@ -263,10 +263,22 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
     spin_lock(&vxplic->lock);
     /** If intp is valid and new source config is different from prev. one.*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && 
-        vaplic_get_sourcecfg(vcpu, intp_id) != new_val) {        
+        vaplic_get_sourcecfg(vcpu, intp_id) != new_val) {
+        /** If intp is being delegated make whole reg 0.
+         *  This happens because this domain is always a leaf. */        
         new_val &= (new_val & APLIC_SRCCFG_D) ? 0 : APLIC_SRCCFG_SM;
+
+        /** If SM is reserved make intp inactive */
         if(new_val == 2 || new_val == 3)
-            new_val = 0;
+            new_val = APLIC_SOURCECFG_SM_INACTIVE;
+        
+        /** Only edge sense can be virtualized for know */
+        if(new_val  == APLIC_SOURCECFG_SM_LEVEL_HIGH){
+            new_val = APLIC_SOURCECFG_SM_EDGE_RISE;
+        } else if (new_val  == APLIC_SOURCECFG_SM_LEVEL_LOW){
+            new_val = APLIC_SOURCECFG_SM_EDGE_FALL;
+        }
+
         /** Is this intp a phys. intp? */
         if(vaplic_get_hw(vcpu, intp_id)){
             /** Update in phys. aplic */
