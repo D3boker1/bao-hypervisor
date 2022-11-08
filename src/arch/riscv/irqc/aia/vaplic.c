@@ -284,8 +284,7 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
             /** Update in phys. aplic */
             aplic_set_sourcecfg(intp_id, new_val);
             /** If phys aplic was succe. written, then update virtual*/
-            if((impl_src[intp_id] == IMPLEMENTED) &&
-                aplic_get_sourcecfg(intp_id) == new_val){
+            if(aplic_get_sourcecfg(intp_id) == new_val){
                 vxplic->srccfg[intp_id-1] = new_val;
             }
         } else {
