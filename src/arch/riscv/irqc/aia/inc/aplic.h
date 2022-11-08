@@ -26,7 +26,7 @@ typedef unsigned irqid_t;
 
 /**==== APLIC Addresses defines ====*/
 // TODO: addr is given by configuration file
-#define APLIC_BASE                      (0xd000000)
+#define APLIC_BASE                      XPLIC_BASE_ADDR
 #define APLIC_IDC_OFF                   (0x4000)
 #define APLIC_IDC_BASE                  (APLIC_BASE + APLIC_IDC_OFF)
 
