@@ -46,7 +46,7 @@ static inline unsigned get_bit_from_reg(uint32_t reg, size_t bit){
  * @param reg 
  * @param bit 
  */
-static void set_bit_from_reg(uint32_t* reg, size_t bit){
+static inline void set_bit_from_reg(uint32_t* reg, size_t bit){
     *reg |=  (1 << bit);
 }
 
@@ -56,7 +56,7 @@ static void set_bit_from_reg(uint32_t* reg, size_t bit){
  * @param reg 
  * @param bit 
  */
-static void clr_bit_from_reg(uint32_t* reg, size_t bit){
+static inline void clr_bit_from_reg(uint32_t* reg, size_t bit){
     *reg &=  ~(1 << bit);
 }
 
@@ -66,7 +66,7 @@ static void clr_bit_from_reg(uint32_t* reg, size_t bit){
  * @param vcpu Virtual cpu to convert
  * @return int The physical cpu id; or INVALID_CPUID in case of error.
  */
-static int vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu){
+static inline int vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu){
     return vm_translate_to_pcpuid(vcpu->vm, vcpu->id);
 }
 
