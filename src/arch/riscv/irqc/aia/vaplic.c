@@ -27,7 +27,7 @@
 #include <mem.h>
 #include <interrupts.h>
 #include <arch/csrs.h>
-#define APLIC_MAX_PRIO 6
+#define APLIC_MAX_PRIO 0xFF
 
 /**
  * @brief Get the bit from reg object
