@@ -309,7 +309,7 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
 static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (reg < (APLIC_MAX_INTERRUPTS/32)) ret = vxplic->setip[reg];
+    if (reg < APLIC_NUM_SETIx_REGS) ret = vxplic->setip[reg];
     return ret;
 }
 
@@ -327,7 +327,7 @@ static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     if (reg < APLIC_NUM_SETIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
         vxplic->setip[reg] = 0;
-        for(int i = 0; i < APLIC_NUM_SETIx_REGS; i++){
+        for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_SETIx_REGS; i++){
             /** Is this intp a phys. intp? */
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
@@ -378,11 +378,11 @@ static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
 static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
-    if (reg < APLIC_MAX_INTERRUPTS/32 && 
+    if (reg < APLIC_NUM_CLRIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
         if (reg == 0) new_val &= 0xFFFFFFFE;
         vxplic->setip[reg] &= ~new_val;
-        for(int i = 0; i < APLIC_MAX_INTERRUPTS/32; i++){
+        for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
                 if(!get_bit_from_reg(vxplic->setip[reg], i) && ((new_val >> i) & 1)){
                     aplic_set_clripnum(i);
@@ -407,7 +407,7 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
 static uint32_t vaplic_get_in_clrip(struct vcpu *vcpu, uint8_t reg){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (reg < (APLIC_MAX_INTERRUPTS/32)) ret = vxplic->in_clrip[reg];
+    if (reg < APLIC_NUM_CLRIx_REGS) ret = vxplic->in_clrip[reg];
     return ret;
 }
 
@@ -442,7 +442,7 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
 static uint32_t vaplic_get_setie(struct vcpu *vcpu, uint32_t reg){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (reg < (APLIC_MAX_INTERRUPTS/32)) ret = vxplic->setie[reg];
+    if (reg < APLIC_NUM_SETIx_REGS) ret = vxplic->setie[reg];
     return ret;
 }
 
@@ -456,12 +456,12 @@ static uint32_t vaplic_get_setie(struct vcpu *vcpu, uint32_t reg){
 static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
-    if (reg < APLIC_MAX_INTERRUPTS/32 && 
+    if (reg < APLIC_NUM_SETIx_REGS && 
         vaplic_get_setie(vcpu, reg) != new_val) {
         /** Update virt setip array */
         if (reg == 0) new_val &= 0xFFFFFFFE;
         vxplic->setie[reg] = new_val;
-        for(int i = 0; i < APLIC_MAX_INTERRUPTS/32; i++){
+        for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_SETIx_REGS; i++){
             /** Is this intp a phys. intp? */
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
@@ -508,11 +508,11 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
 static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
-    if (reg < APLIC_MAX_INTERRUPTS/32 && 
+    if (reg < APLIC_NUM_CLRIx_REGS && 
         vaplic_get_setie(vcpu, reg) != new_val) {
         if (reg == 0) new_val &= 0xFFFFFFFE;
         vxplic->setie[reg] &= ~new_val;
-        for(int i = 0; i < APLIC_MAX_INTERRUPTS/32; i++){
+        for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
                 if(!get_bit_from_reg(vxplic->setie[reg], i) && ((new_val >> i) & 1)){
                     aplic_set_clrienum(i);
