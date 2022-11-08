@@ -3,4 +3,6 @@
 
 #include <vplic.h>
 
+#define XPLIC_MAX_INTERRUPTS (1024)
+
 #endif /* __VXPLIC_H__ */

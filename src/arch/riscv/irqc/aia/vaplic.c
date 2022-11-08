@@ -19,8 +19,6 @@
  *          Desta forma, deixo de precisar das func. vaplic_emul_x_access.
  *          Como paramentro da função, vai o index do intp_id/reg/idc_id
  * 
- * TODO: Implementar as funções set, a aplic_emul, ipi.
- * TODO: Avaliar se posso tirar da struct os reg XXXnum
  */
 #include <vaplic.h>
 #include <vm.h>
@@ -29,17 +27,36 @@
 #include <mem.h>
 #include <interrupts.h>
 #include <arch/csrs.h>
-#define APLIC_MAX_PRIO 6
+#define APLIC_MAX_PRIO 0xFF
 
+/**
+ * @brief Get the bit from reg object
+ * 
+ * @param reg 
+ * @param bit 
+ * @return unsigned 
+ */
 static inline unsigned get_bit_from_reg(uint32_t reg, size_t bit){
     return (reg & (1 << bit)) ? 1U : 0U;
 }
 
-static void set_bit_from_reg(uint32_t* reg, size_t bit){
+/**
+ * @brief Set the bit from reg object
+ * 
+ * @param reg 
+ * @param bit 
+ */
+static inline void set_bit_from_reg(uint32_t* reg, size_t bit){
     *reg |=  (1 << bit);
 }
 
-static void clr_bit_from_reg(uint32_t* reg, size_t bit){
+/**
+ * @brief Clear the bit from reg object
+ * 
+ * @param reg 
+ * @param bit 
+ */
+static inline void clr_bit_from_reg(uint32_t* reg, size_t bit){
     *reg &=  ~(1 << bit);
 }
 
@@ -49,10 +66,11 @@ static void clr_bit_from_reg(uint32_t* reg, size_t bit){
  * @param vcpu Virtual cpu to convert
  * @return int The physical cpu id; or INVALID_CPUID in case of error.
  */
-static int vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu){
+static inline int vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu){
     return vm_translate_to_pcpuid(vcpu->vm, vcpu->id);
 }
 
+static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu);
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id); 
 static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id);
 static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id);
@@ -60,7 +78,7 @@ static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id);
 
 void vaplic_set_hw(struct vm *vm, irqid_t intp_id)
 {
-    if (intp_id <= APLIC_MAX_INTERRUPTS) {
+    if (intp_id < APLIC_MAX_INTERRUPTS) {
         bitmap_set(vm->arch.vxplic.hw,intp_id);
     }
 }
@@ -99,18 +117,18 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
-// static uint32_t vaplic_emul_gateway(struct vcpu* vcpu, irqid_t intp_id){
-//     // Só tem de verificar se a interrupção pode ou não ficar pend
-//     // Level?
-//     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-//     if(vxplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_INACTIVE &&
-//        vxplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_DETACH){
-//         set_bit_from_reg(&vxplic->setip[intp_id/32], intp_id);
-//     }
-// }
-
+/**
+ * @brief Emulates the notifier aplic module.
+ *        (02/11/2022): computes the next pending bit.
+ *        Only direct mode is supported. 
+ * 
+ * @param vcpu 
+ * @return irqid_t 
+ */
 static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
+
+    /** Find highest pending and enabled interrupt */
     uint32_t max_prio = APLIC_MAX_PRIO;
     irqid_t int_id = 0;
     uint32_t hart_index = 0;
@@ -124,16 +142,19 @@ static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
             if (prio < max_prio) {
                 max_prio = prio;
                 int_id = i;
-                hart_index = (target >> 18) & 0xFFFC;
+                hart_index = (target >> 18) & 0x3FFF;
             }
         }
     }
 
+    /** Can interrupt be delivery? */
+    uint32_t domaincgfIE = (vaplic_get_domaincfg(vcpu) >> 8) & 0x1;
     uint32_t threshold = vaplic_get_ithreshold(vcpu, hart_index);
     uint32_t delivery = vaplic_get_idelivery(vcpu, hart_index);
     uint32_t force =  vaplic_get_iforce(vcpu, hart_index);
-    if ((max_prio < threshold || threshold == 0 || force == 1) && delivery == 1){
-        vxplic->topi_claimi[hart_index] = (hart_index << 18) | prio;
+    if ((max_prio < threshold || threshold == 0 || force == 1) && 
+         delivery == 1 && domaincgfIE == 1){
+        vxplic->topi_claimi[hart_index] = (int_id << 16) | prio;
         return int_id;
     }
     else{
@@ -145,6 +166,11 @@ enum {UPDATE_HART_LINE};
 static void vaplic_ipi_handler(uint32_t event, uint64_t data);
 CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
 
+/**
+ * @brief Update the CPU interrupt line.
+ * 
+ * @param vcpu 
+ */
 static void vaplic_update_hart_line(struct vcpu* vcpu) 
 {
     int pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu);
@@ -163,6 +189,12 @@ static void vaplic_update_hart_line(struct vcpu* vcpu)
     }
 }
 
+/**
+ * @brief Processes an incoming event.
+ * 
+ * @param event the event id
+ * @param data
+ */
 static void vaplic_ipi_handler(uint32_t event, uint64_t data) 
 {
     switch(event) {
@@ -172,20 +204,31 @@ static void vaplic_ipi_handler(uint32_t event, uint64_t data)
     }
 }
 
-
 // ============================================================================
+/**
+ * @brief Write to domaincfg register a new value.
+ * 
+ * @param vcpu 
+ * @param new_val The new value to write to domaincfg
+ */
 static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
     /** Update only the virtual domaincfg */
     /** Only Interrupt Enable is configurable. */
-    new_val = (new_val & (0x1 << 8));
-    vxplic->domaincfg = new_val | (0x80 << 24);
+    new_val &= APLIC_DOMAINCFG_IE;
+    vxplic->domaincfg = new_val | APLIC_DOMAINCFG_RO80;
     spin_unlock(&vxplic->lock);
 
     vaplic_update_hart_line(vcpu);
 }
 
+/**
+ * @brief Read from domaincfg
+ * 
+ * @param vcpu 
+ * @return uint32_t domaincfg value 
+ */
 static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
@@ -193,7 +236,14 @@ static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
     return ret;
 }
 
-static uint32_t vaplic_get_srccfg(struct vcpu *vcpu, irqid_t intp_id){
+/**
+ * @brief Read from a given interrupt sourcecfg register
+ * 
+ * @param vcpu 
+ * @param intp_id Interrupt id to read
+ * @return uint32_t 
+ */
+static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t real_int_id = intp_id - 1;
     uint32_t ret = 0;
 
@@ -204,58 +254,92 @@ static uint32_t vaplic_get_srccfg(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
-static void vaplic_set_srccfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
+/**
+ * @brief Write to sourcecfg register of a given interrupt
+ * 
+ * @param vcpu 
+ * @param intp_id interrupt id to write to
+ * @param new_val value to write to sourcecfg
+ */
+static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
     /** If intp is valid and new source config is different from prev. one.*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && 
-        vaplic_get_srccfg(vcpu, intp_id) != new_val) {
-        /** Update virt sourcecfg array */        
-        new_val = (new_val & (0x1 << 10)) ? 0 : new_val & 0x7;
+        vaplic_get_sourcecfg(vcpu, intp_id) != new_val) {
+        /** If intp is being delegated make whole reg 0.
+         *  This happens because this domain is always a leaf. */        
+        new_val &= (new_val & APLIC_SRCCFG_D) ? 0 : APLIC_SRCCFG_SM;
+
+        /** If SM is reserved make intp inactive */
         if(new_val == 2 || new_val == 3)
-            new_val = 0;
+            new_val = APLIC_SOURCECFG_SM_INACTIVE;
+        
+        /** Only edge sense can be virtualized for know */
+        if(new_val  == APLIC_SOURCECFG_SM_LEVEL_HIGH){
+            new_val = APLIC_SOURCECFG_SM_EDGE_RISE;
+        } else if (new_val  == APLIC_SOURCECFG_SM_LEVEL_LOW){
+            new_val = APLIC_SOURCECFG_SM_EDGE_FALL;
+        }
+
         /** Is this intp a phys. intp? */
         if(vaplic_get_hw(vcpu, intp_id)){
             /** Update in phys. aplic */
             aplic_set_sourcecfg(intp_id, new_val);
-            if((impl_src[intp_id] == IMPLEMENTED) &&
-                aplic_get_sourcecfg(intp_id) == new_val){
-                printk("BAO: srccfg[%d]= %d\r\n", intp_id, new_val);
+            /** If phys aplic was succe. written, then update virtual*/
+            if(aplic_get_sourcecfg(intp_id) == new_val){
                 vxplic->srccfg[intp_id-1] = new_val;
             }
         } else {
-            /** If intp is not phys. emul aplic behaviour */
+            /** If intp is not phys. update virtual only */
             vxplic->srccfg[intp_id-1] = new_val;
-            vaplic_update_hart_line(vcpu);
         }
+        vaplic_update_hart_line(vcpu);
     }
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Get the pending bits for interrupts [32*reg:(32*reg)+31]
+ * 
+ * @param vcpu virtual cpu
+ * @param reg regiter index
+ * @return uint32_t value with pending bit mapped per bit
+ */
 static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (reg < (APLIC_MAX_INTERRUPTS/32)) ret = vxplic->setip[reg];
+    if (reg < APLIC_NUM_SETIx_REGS) ret = vxplic->setip[reg];
     return ret;
 }
 
+/**
+ * @brief Set the pending bits for interrupts [32*reg:(32*reg)+31]
+ * 
+ * @param vcpu virtual cpu
+ * @param reg regiter index
+ * @param new_val value with pending bit mapped per bit
+ */
 static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
-    if (reg < APLIC_MAX_INTERRUPTS/32 && 
+    if (reg == 0) new_val &= 0xFFFFFFFE;
+    if (reg < APLIC_NUM_SETIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
-        /** Update virt setip array */
-        if (reg == 0) new_val &= 0xFFFFFFFE;
-        vxplic->setip[reg] = new_val;
-        for(int i = 0; i < APLIC_MAX_INTERRUPTS/32; i++){
+        vxplic->setip[reg] = 0;
+        for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_SETIx_REGS; i++){
             /** Is this intp a phys. intp? */
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
                 if(get_bit_from_reg(vxplic->setip[reg], i) && ((new_val >> i) & 1)){
-                    aplic_set_pend_num(i);
+                    aplic_set_pend(i);
+                    if(aplic_get_pend(i)){
+                        vxplic->setip[reg] |= new_val & (1 << i);
+                    }
                 }
             } else {
                 /** If intp is not phys. emul aplic behaviour */
+                vxplic->setip[reg] |= new_val & (1 << i);
                 vaplic_update_hart_line(vcpu);
             }
         }
@@ -263,15 +347,20 @@ static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Set the pending bits for a given interrupt
+ * 
+ * @param vcpu virtual cpu
+ * @param new_val value w/ the interrupt source number
+ */
 static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
         !get_bit_from_reg(vxplic->setip[new_val/32], new_val)) {
-        //vxplic->setipnum = new_val;
         set_bit_from_reg(&vxplic->setip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
-            aplic_set_pend_num(new_val);
+            aplic_set_pend(new_val);
         } else {
             vaplic_update_hart_line(vcpu);
         }
@@ -279,14 +368,21 @@ static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Clear the pending bits for interrupts [32*reg:(32*reg)+31]
+ * 
+ * @param vcpu virtual cpu 
+ * @param reg  regiter index
+ * @param new_val value with intp to be cleared per bit
+ */
 static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
-    if (reg < APLIC_MAX_INTERRUPTS/32 && 
+    if (reg < APLIC_NUM_CLRIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
         if (reg == 0) new_val &= 0xFFFFFFFE;
         vxplic->setip[reg] &= ~new_val;
-        for(int i = 0; i < APLIC_MAX_INTERRUPTS/32; i++){
+        for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
                 if(!get_bit_from_reg(vxplic->setip[reg], i) && ((new_val >> i) & 1)){
                     aplic_set_clripnum(i);
@@ -299,19 +395,33 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Get the rectified input values per source
+ *        NOTE: Not implemented as stated! 
+ *        TODO: return the pending bits?
+ * 
+ * @param vcpu virtual cpu 
+ * @param reg regiter index
+ * @return uint32_t value with rectified intp per bit
+ */
 static uint32_t vaplic_get_in_clrip(struct vcpu *vcpu, uint8_t reg){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (reg < (APLIC_MAX_INTERRUPTS/32)) ret = vxplic->in_clrip[reg];
+    if (reg < APLIC_NUM_CLRIx_REGS) ret = vxplic->in_clrip[reg];
     return ret;
 }
 
+/**
+ * @brief Clear the pending bits for a given interrupt
+ * 
+ * @param vcpu virtual cpu
+ * @param new_val value w/ the interrupt source number
+ */
 static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
         get_bit_from_reg(vxplic->setip[new_val/32], new_val)) {
-        //vxplic->clripnum = new_val;
         clr_bit_from_reg(&vxplic->setip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_clripnum(new_val);
@@ -322,22 +432,36 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Get the enabled bits for interrupts [32*reg:(32*reg)+31]
+ * 
+ * @param vcpu virtual cpu
+ * @param reg regiter index
+ * @return uint32_t value with enabled bit mapped per bit
+ */
 static uint32_t vaplic_get_setie(struct vcpu *vcpu, uint32_t reg){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (reg < (APLIC_MAX_INTERRUPTS/32)) ret = vxplic->setie[reg];
+    if (reg < APLIC_NUM_SETIx_REGS) ret = vxplic->setie[reg];
     return ret;
 }
 
+/**
+ * @brief Set the enabled bits for interrupts [32*reg:(32*reg)+31]
+ * 
+ * @param vcpu virtual cpu
+ * @param reg regiter index
+ * @param new_val value with enbaled bit mapped per bit
+ */
 static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
-    if (reg < APLIC_MAX_INTERRUPTS/32 && 
+    if (reg < APLIC_NUM_SETIx_REGS && 
         vaplic_get_setie(vcpu, reg) != new_val) {
         /** Update virt setip array */
         if (reg == 0) new_val &= 0xFFFFFFFE;
         vxplic->setie[reg] = new_val;
-        for(int i = 0; i < APLIC_MAX_INTERRUPTS/32; i++){
+        for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_SETIx_REGS; i++){
             /** Is this intp a phys. intp? */
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
@@ -353,12 +477,17 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Set the enabled bits for a given interrupt
+ * 
+ * @param vcpu virtual cpu
+ * @param new_val value w/ the interrupt source number
+ */
 static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
         !get_bit_from_reg(vxplic->setie[new_val/32], new_val)) {
-        //vxplic->setienum = new_val;
         set_bit_from_reg(&vxplic->setie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_ienum(new_val);
@@ -369,14 +498,21 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Clear the enabled bits for interrupts [32*reg:(32*reg)+31]
+ * 
+ * @param vcpu virtual cpu 
+ * @param reg  regiter index
+ * @param new_val value with intp to be cleared per bit
+ */
 static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
-    if (reg < APLIC_MAX_INTERRUPTS/32 && 
+    if (reg < APLIC_NUM_CLRIx_REGS && 
         vaplic_get_setie(vcpu, reg) != new_val) {
         if (reg == 0) new_val &= 0xFFFFFFFE;
         vxplic->setie[reg] &= ~new_val;
-        for(int i = 0; i < APLIC_MAX_INTERRUPTS/32; i++){
+        for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
                 if(!get_bit_from_reg(vxplic->setie[reg], i) && ((new_val >> i) & 1)){
                     aplic_set_clrienum(i);
@@ -389,12 +525,17 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Clear the enabled bits for a given interrupt
+ * 
+ * @param vcpu virtual cpu
+ * @param new_val value w/ the interrupt source number
+ */
 static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
         get_bit_from_reg(vxplic->setie[new_val/32], new_val)) {
-        //vxplic->clrienum = new_val;
         clr_bit_from_reg(&vxplic->setie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_clrienum(new_val);
@@ -405,39 +546,89 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Write to target register of a given interrupt
+ * 
+ * @param vcpu 
+ * @param intp_id interrupt id to write to
+ * @param new_val value to write to target
+ */
 static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct virqc *vxplic = &vcpu->vm->arch.vxplic;
+    uint32_t hart_index = (new_val >> APLIC_TARGET_HART_IDX_SHIFT) & APLIC_TARGET_HART_IDX_MASK;
+    cpuid_t pcpu_id = vm_translate_to_pcpuid(vcpu->vm, hart_index);
 
     spin_lock(&vxplic->lock);
+    if(pcpu_id == INVALID_CPUID){
+        /** If the hart index is invalid, make it vcpu = 0 
+         *  and read the new pcpu.
+         *  Software should not write anything other than legal 
+         *  values to such a field */
+        pcpu_id = vm_translate_to_pcpuid(vcpu->vm, 0);
+    }
+    /** Write the physical CPU in hart index */
+    new_val &= APLIC_TARGET_IPRIO_MASK;
+    new_val |= (pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+
     if (intp_id > 0  && intp_id < APLIC_MAX_INTERRUPTS && 
         vaplic_get_target(vcpu, intp_id) != new_val) {
-        if ((new_val & 0xFF) == 0){
-            new_val &= ~0xFF;
-            new_val |= 0x1;
+
+        new_val &= APLIC_TARGET_MASK;
+        /** If prio is 0, set to 1 (max)*/
+        if ((new_val & APLIC_TARGET_IPRIO_MASK) == 0){
+            new_val |= APLIC_TARGET_PRIO_DEFAULT;
         }
-        new_val = (new_val & 0xFFFC00FF);
-        if(vaplic_get_hw(vcpu,intp_id)){
+        
+        if(vaplic_get_hw(vcpu, intp_id)){
             aplic_set_target(intp_id, new_val);
-            if(impl_src[intp_id] == IMPLEMENTED)
+            if(impl_src[intp_id] == IMPLEMENTED && 
+               aplic_get_target(intp_id) == new_val){
                 vxplic->target[intp_id-1] = new_val;
+            }
         } else {
-            vaplic_update_hart_line(vcpu);
             vxplic->target[intp_id-1] = new_val;
         }
+        vaplic_update_hart_line(vcpu);
     }
     spin_unlock(&vxplic->lock);
 }
 
+/**
+ * @brief Read from a given interrupt target register
+ * 
+ * @param vcpu 
+ * @param intp_id Interrupt id to read
+ * @return uint32_t value with target from intp_id
+ */
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
-
-    if(intp_id == 0)
-        return ret;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (intp_id < APLIC_MAX_INTERRUPTS) ret = vxplic->target[intp_id -1];
+    cpuid_t pcpu_id = 0;
+    cpuid_t vcpu_id = 0;
+    
+    if(intp_id == 0){
+        return ret;
+    }
+    
+    if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS){
+        /** Translate the physical cpu into the its virtual pair */
+        pcpu_id = vxplic->target[intp_id -1] >> APLIC_TARGET_HART_IDX_SHIFT;
+        vcpu_id = vm_translate_to_vcpuid(vcpu->vm, pcpu_id);
+        ret = vxplic->target[intp_id -1] & APLIC_TARGET_IPRIO_MASK;
+        ret |= (vcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+    }
     return ret;
 }
 
+/** IDC Functions emulation */
+
+/**
+ * @brief Set idelivery register for a given idc. Only 0 and 1 are allowed.
+ * 
+ * @param vcpu virtual CPU
+ * @param idc_id idc identifier
+ * @param new_val new value to write in iforce
+ */
 static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
@@ -453,6 +644,13 @@ static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t ne
     vaplic_update_hart_line(vcpu);
 }
 
+/**
+ * @brief Read idelivery register from a given idc.
+ * 
+ * @param vcpu virtual CPU
+ * @param idc_id idc identifier
+ * @return uint32_t value read from idelivery
+ */
 static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
@@ -460,6 +658,13 @@ static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id){
     return ret;
 }
 
+/**
+ * @brief Set iforce register for a given idc. Only 0 and 1 are allowed.
+ * 
+ * @param vcpu virtual CPU
+ * @param idc_id idc identifier
+ * @param new_val new value to write in iforce
+ */
 static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
@@ -475,6 +680,13 @@ static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_v
     vaplic_update_hart_line(vcpu);
 }
 
+/**
+ * @brief Read idelivery register from a given idc.
+ * 
+ * @param vcpu virtual CPU
+ * @param idc_id idc identifier
+ * @return uint32_t value read from iforce
+ */
 static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
@@ -482,6 +694,13 @@ static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id){
     return ret;
 }
 
+/**
+ * @brief Set ithreshold register for a given idc.
+ * 
+ * @param vcpu virtual CPU
+ * @param idc_id idc identifier
+ * @param new_val new value to write in ithreshold
+ */
 static void vaplic_set_ithreshold(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     spin_lock(&vxplic->lock);
@@ -493,6 +712,13 @@ static void vaplic_set_ithreshold(struct vcpu *vcpu, uint16_t idc_id, uint32_t n
     vaplic_update_hart_line(vcpu);
 }
 
+/**
+ * @brief Read ithreshold register from a given idc.
+ * 
+ * @param vcpu virtual CPU
+ * @param idc_id idc identifier
+ * @return uint32_t value read from ithreshold
+ */
 static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
@@ -500,6 +726,13 @@ static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id){
     return ret;
 }
 
+/**
+ * @brief Read topi register from a given idc.
+ * 
+ * @param vcpu virtual CPU
+ * @param idc_id idc identifier
+ * @return uint32_t value read from topi
+ */
 static uint32_t vaplic_get_topi(struct vcpu *vcpu, uint16_t idc_id){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
@@ -507,11 +740,19 @@ static uint32_t vaplic_get_topi(struct vcpu *vcpu, uint16_t idc_id){
     return ret;
 }
 
+/**
+ * @brief Read claimi register from a given idc.
+ * 
+ * @param vcpu virtual CPU
+ * @param idc_id idc identifier
+ * @return uint32_t value read from claimi
+ */
 static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
     uint32_t ret = 0;
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
     if (idc_id < vxplic->idc_num){
         ret = vxplic->topi_claimi[idc_id];
+        /** Sepurious intp*/
         if (ret == 0){
             // Clear the virt iforce bit
             vxplic->iforce[idc_id] = 0;
@@ -521,10 +762,10 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
             }
         }
         // Clear the virt pending bit for te read intp
-        set_bit_from_reg(&vxplic->setip[(ret >> 16)/32], (ret >> 16)%32);
+        clr_bit_from_reg(&vxplic->setip[(ret >> 16)/32], (ret >> 16)%32);
         if(vaplic_get_hw(vcpu,(ret >> 16))){
             // Clear the physical pending bit for te read intp
-            aplic_set_pend_num((ret >> 16)%32);
+            aplic_idc_get_claimi(idc_id);
         }
         vaplic_update_hart_line(vcpu);
     }
@@ -532,15 +773,14 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
 }
 // ============================================================================
 
-
-// ====================================================
+// ============================================================================
 /**
  * @brief register access emulation functions
  * 
  * @param acc access information
  * 
  * It determines whether it needs to call the write or read funcion
- * for the register.
+ * for the choosen register.
  */
 
 static void vaplic_emul_domaincfg_access(struct emul_access *acc){
@@ -554,9 +794,9 @@ static void vaplic_emul_domaincfg_access(struct emul_access *acc){
 static void vaplic_emul_srccfg_access(struct emul_access *acc){
     int intp = (acc->addr & 0xFFF)/4;
     if (acc->write) {
-        vaplic_set_srccfg(cpu.vcpu, intp, vcpu_readreg(cpu.vcpu, acc->reg));
+        vaplic_set_sourcecfg(cpu.vcpu, intp, vcpu_readreg(cpu.vcpu, acc->reg));
     } else {
-        vcpu_writereg(cpu.vcpu, acc->reg, vaplic_get_srccfg(cpu.vcpu, intp));
+        vcpu_writereg(cpu.vcpu, acc->reg, vaplic_get_sourcecfg(cpu.vcpu, intp));
     }
 }
 
@@ -668,7 +908,7 @@ static void vaplic_emul_claimi_access(struct emul_access *acc){
     vcpu_writereg(cpu.vcpu, acc->reg, vaplic_get_claimi(cpu.vcpu, idc_id));
 }
 
-// ====================================================
+// ============================================================================
 void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
 {
     struct virqc * vxplic = &vcpu->vm->arch.vxplic;
@@ -676,9 +916,8 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     
     /** Intp has a valid ID and the virtual interrupt is not pending*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
-        //vaplic_emul_gateway(vcpu, intp_id);
-        if(vxplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_INACTIVE &&
-           vxplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_DETACH){
+        if(vxplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE &&
+           vxplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_DETACH){
             set_bit_from_reg(&vxplic->setip[intp_id/32], intp_id);
         }
         vaplic_update_hart_line(vcpu);
@@ -702,7 +941,7 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
         case APLIC_DOMAIN_OFF:
             vaplic_emul_domaincfg_access(acc);
             break;
-        case APLIC_SOURCECFG_OFF ... (APLIC_SOURCECFG_OFF-0x4)+(1023*4):
+        case APLIC_SOURCECFG_OFF ... APLIC_SOURCECFG_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
             vaplic_emul_srccfg_access(acc);
             break;
         // case APLIC_MMSIADDRCFG_OFF:
@@ -717,25 +956,25 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
         // case APLIC_SMSIADDRCFGH_OFF:
         //     vaplic_emul_smsiaddrcfgh_access(acc);
         //     break;
-        case APLIC_SETIP_OFF ... (APLIC_SETIP_OFF - 0x04)+(31*4):
+        case APLIC_SETIP_OFF ... APLIC_SETIP_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
             vaplic_emul_setip_access(acc);
             break;
         case APLIC_SETIPNUM_OFF:
             vaplic_emul_setipnum_access(acc);
             break;
-        case APLIC_IN_CLRIP_OFF ... (APLIC_IN_CLRIP_OFF - 0x04)+(31*4):
+        case APLIC_IN_CLRIP_OFF ... APLIC_IN_CLRIP_OFF+((APLIC_NUM_CLRIx_REGS-1)*4):
             vaplic_emul_in_clrip_access(acc);
             break;
         case APLIC_CLRIPNUM_OFF:
             vaplic_emul_clripnum_access(acc);
             break;
-        case APLIC_SETIE_OFF ... (APLIC_SETIE_OFF - 0x04)+(31*4):
+        case APLIC_SETIE_OFF ... APLIC_SETIE_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
             vaplic_emul_setie_access(acc);
             break;
         case APLIC_SETIENUM_OFF:
             vaplic_emul_setienum_access(acc);
             break;
-        case APLIC_CLRIE_OFF ... (APLIC_CLRIE_OFF - 0x04)+(31*4):
+        case APLIC_CLRIE_OFF ... APLIC_CLRIE_OFF+((APLIC_NUM_CLRIx_REGS-1)*4):
             vaplic_emul_clrie_access(acc);
             break;
         case APLIC_CLRIENUM_OFF:
@@ -750,7 +989,7 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
         // case APLIC_GENMSI_OFF:
         //     vaplic_emul_genmsi_access(acc);
         //     break;
-        case APLIC_TARGET_OFF ... (APLIC_TARGET_OFF-0x4)+(1023*4):
+        case APLIC_TARGET_OFF ...APLIC_TARGET_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
             vaplic_emul_target_access(acc);
             break;
         default:
@@ -783,7 +1022,7 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
         return true;
     }
     uint32_t addr = acc->addr - APLIC_IDC_BASE;
-    addr = addr - (0x20 * idc_id);
+    addr = addr - (sizeof(idc[0]) * idc_id);
     switch (addr & 0x1F) {
         case APLIC_IDC_IDELIVERY_OFF:
             vaplic_emul_idelivery_access(acc);
