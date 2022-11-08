@@ -792,7 +792,7 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
         case APLIC_DOMAIN_OFF:
             vaplic_emul_domaincfg_access(acc);
             break;
-        case APLIC_SOURCECFG_OFF ... (APLIC_SOURCECFG_OFF-0x4)+(1023*4):
+        case APLIC_SOURCECFG_OFF ... APLIC_SOURCECFG_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
             vaplic_emul_srccfg_access(acc);
             break;
         // case APLIC_MMSIADDRCFG_OFF:
@@ -807,25 +807,25 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
         // case APLIC_SMSIADDRCFGH_OFF:
         //     vaplic_emul_smsiaddrcfgh_access(acc);
         //     break;
-        case APLIC_SETIP_OFF ... (APLIC_SETIP_OFF - 0x04)+(31*4):
+        case APLIC_SETIP_OFF ... APLIC_SETIP_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
             vaplic_emul_setip_access(acc);
             break;
         case APLIC_SETIPNUM_OFF:
             vaplic_emul_setipnum_access(acc);
             break;
-        case APLIC_IN_CLRIP_OFF ... (APLIC_IN_CLRIP_OFF - 0x04)+(31*4):
+        case APLIC_IN_CLRIP_OFF ... APLIC_IN_CLRIP_OFF+((APLIC_NUM_CLRIx_REGS-1)*4):
             vaplic_emul_in_clrip_access(acc);
             break;
         case APLIC_CLRIPNUM_OFF:
             vaplic_emul_clripnum_access(acc);
             break;
-        case APLIC_SETIE_OFF ... (APLIC_SETIE_OFF - 0x04)+(31*4):
+        case APLIC_SETIE_OFF ... APLIC_SETIE_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
             vaplic_emul_setie_access(acc);
             break;
         case APLIC_SETIENUM_OFF:
             vaplic_emul_setienum_access(acc);
             break;
-        case APLIC_CLRIE_OFF ... (APLIC_CLRIE_OFF - 0x04)+(31*4):
+        case APLIC_CLRIE_OFF ... APLIC_CLRIE_OFF+((APLIC_NUM_CLRIx_REGS-1)*4):
             vaplic_emul_clrie_access(acc);
             break;
         case APLIC_CLRIENUM_OFF:
@@ -840,7 +840,7 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
         // case APLIC_GENMSI_OFF:
         //     vaplic_emul_genmsi_access(acc);
         //     break;
-        case APLIC_TARGET_OFF ... (APLIC_TARGET_OFF-0x4)+(1023*4):
+        case APLIC_TARGET_OFF ...APLIC_TARGET_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
             vaplic_emul_target_access(acc);
             break;
         default:
@@ -873,7 +873,7 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
         return true;
     }
     uint32_t addr = acc->addr - APLIC_IDC_BASE;
-    addr = addr - (0x20 * idc_id);
+    addr = addr - (sizeof(idc[0]) * idc_id);
     switch (addr & 0x1F) {
         case APLIC_IDC_IDELIVERY_OFF:
             vaplic_emul_idelivery_access(acc);
