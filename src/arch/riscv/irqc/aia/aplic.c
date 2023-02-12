@@ -7,7 +7,7 @@
 #include <cpu.h>
 #include <interrupts.h>
 
-/**==== APLIC fields and masks defines ====*/
+/** APLIC fields and masks defines */
 #define APLIC_DOMAINCFG_CTRL_MASK       (0x1FF)
 
 #define DOMAINCFG_DM                    (1U << 2)
@@ -24,16 +24,16 @@
 
 #define APLIC_SRCCFG_DEFAULT            APLIC_SRCCFG_DETACH    
 
-/**==== APLIC public data ====*/
+/** APLIC public data */
 volatile struct aplic_global *aplic_domain;
 volatile struct aplic_idc *idc;
 
-/**==== APLIC private data ====*/
+/** APLIC private data */
 size_t APLIC_IMPL_INTERRUPTS;
 size_t APLIC_IMPL_INTERRUPTS_REGS;
 uint32_t impl_src[APLIC_MAX_INTERRUPTS];
 
-/**==== APLIC private functions ====*/
+/** APLIC private functions */
 /**
  * @brief Populate impl_src array with 1's if source i is an active
  *        source in this domain
@@ -55,8 +55,8 @@ static size_t aplic_scan_impl_int(void)
     return count;
 }
 
-/**==== APLIC public functions ====*/
-/**==== Initialization Functions ====*/
+/** APLIC public functions */
+/** Initialization Functions */
 void aplic_init(void)
 {
     aplic_domain->domaincfg = 0;
@@ -86,7 +86,7 @@ void aplic_idc_init(void){
     idc[idc_index].iforce = APLIC_DISABLE_IFORCE;
 }
 
-/**==== Domain functions ====*/
+/** Domain functions */
 void aplic_set_sourcecfg(irqid_t int_id, uint32_t val)
 {
     uint32_t real_int_id = int_id - 1;
@@ -199,7 +199,7 @@ uint32_t aplic_get_target(irqid_t int_id)
     return ret;
 }
 
-/**==== IDC functions ====*/
+/** IDC functions */
 void aplic_idc_set_iforce(idcid_t idc_id, bool en)
 {
     if(idc_id < APLIC_PLAT_IDC_NUM) {
@@ -220,7 +220,7 @@ uint32_t aplic_idc_get_claimi(idcid_t idc_id)
     return ret;
 }
 
-/**==== APLIC Interrupt handler ====*/
+/** APLIC Interrupt handler */
 void aplic_handle(void){
     uint32_t intp_identity;
     idcid_t idc_id = cpu()->id;

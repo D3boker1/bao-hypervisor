@@ -188,7 +188,6 @@ static void vaplic_ipi_handler(uint32_t event, uint64_t data)
     }
 }
 
-// ============================================================================
 /** APLIC Functions emulation */
 
 /**
@@ -757,9 +756,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
     }
     return ret;
 }
-// ============================================================================
 
-// ============================================================================
 /**
  * @brief register access emulation functions
  * 
