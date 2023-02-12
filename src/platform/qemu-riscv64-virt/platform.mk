@@ -6,7 +6,7 @@ ARCH:=riscv
 # CPU definition
 CPU:=
 # Interrupt controller definition
-IRQC:=plic
+IRQC?=plic
 
 drivers := sbi_uart
 
