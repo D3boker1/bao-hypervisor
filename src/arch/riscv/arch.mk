@@ -9,7 +9,8 @@ arch-asflags =
 arch-ldflags = 
 
 # Interrupt controller source files
-irqc_arch_dir=$(src_dir)/arch/riscv/irqc/$(IRQC)
+irqc_arch_dir=$(cpu_arch_dir)/irqc/$(IRQC)
+src_dirs+=$(irqc_arch_dir)
 
 arch_mem_prot:=mmu
 PAGE_SIZE:=0x1000

@@ -1,6 +1,6 @@
 ## SPDX-License-Identifier: Apache-2.0
 ## Copyright (c) Bao Project and Contributors. All rights reserved.
 
-irqc-objs-y+=interrupts.o
-irqc-objs-y+=plic.o
-irqc-objs-y+=vplic.o
+cpu-objs-y+=irqc/$(IRQC)/interrupts.o
+cpu-objs-y+=irqc/$(IRQC)/plic.o
+cpu-objs-y+=irqc/$(IRQC)/vplic.o
