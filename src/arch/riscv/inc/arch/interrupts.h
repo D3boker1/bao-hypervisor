@@ -7,7 +7,7 @@
 #define __ARCH_INTERRUPTS_H__
 
 #include <bao.h>
-#include <vxplic.h>
+#include <irqc.h>
 
 /**
  * In riscv, the ipi (software interrupt) and timer interrupts dont actually

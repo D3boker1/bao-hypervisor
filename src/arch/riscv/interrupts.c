@@ -6,7 +6,7 @@
 #include <bao.h>
 #include <interrupts.h>
 
-#include <aplic.h>
+#include <irqc.h>
 #include <arch/sbi.h>
 #include <cpu.h>
 #include <mem.h>
@@ -18,22 +18,22 @@
 void interrupts_arch_init()
 {
     if (cpu()->id  == CPU_MASTER) {   
-        aplic_domain = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-            platform.arch.plic_base, NUM_PAGES(sizeof(struct aplic_global)));
+        irqc_global = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
+            platform.arch.plic_base, NUM_PAGES(sizeof(struct irqc_global_hw)));
         
-        idc = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-            platform.arch.plic_base + APLIC_IDC_OFF,
-            NUM_PAGES(sizeof(struct aplic_idc)*APLIC_PLAT_IDC_NUM));
+        irqc_hart = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
+            platform.arch.plic_base + HART_REG_OFF,
+            NUM_PAGES(sizeof(struct irqc_hart_hw)*IRQC_HART_INST));
 
         fence_sync();
         
-        aplic_init();
+        irqc_init();
     }
 
     /* Wait for master hart to finish aplic initialization */
     cpu_sync_barrier(&cpu_glb_sync);
 
-    aplic_idc_init();
+    irqc_cpu_init();
 
     /**
      * Enable external interrupts.
@@ -68,8 +68,8 @@ void interrupts_arch_enable(irqid_t int_id, bool en)
         else
             CSRC(sie, SIE_STIE);
     } else {
-        aplic_set_ienum(int_id);
-        aplic_set_target(int_id, (cpu()->id << 18) | 0x01);
+        irqc_set_enbl(int_id, en);
+        irqc_set_prio(int_id);
     }
 }
 
@@ -93,7 +93,7 @@ void interrupts_arch_handle()
             // sbi_set_timer(-1);
             break;
         case SCAUSE_CODE_SEI:
-            aplic_handle();
+            irqc_handle();
             break;
         default:
             // WARNING("unkown interrupt");
@@ -108,7 +108,7 @@ bool interrupts_arch_check(irqid_t int_id)
     } else if (int_id == TIMR_INT_ID) {
         return CSRR(sip) & SIP_STIP;
     } else {
-        return aplic_get_pend(int_id);
+        return irqc_get_pend(int_id);
     }
 }
 
@@ -120,9 +120,9 @@ void interrupts_arch_clear(irqid_t int_id)
         /**
          * It is not actually possible to clear timer by software.
          */
-        WARNING("trying to clear timer or external interrupt");
+        WARNING("trying to clear timer interrupt");
     } else {
-        aplic_set_clrienum(int_id);
+        irqc_set_clrienum(int_id);
     }
 }
 
@@ -133,5 +133,5 @@ inline bool interrupts_arch_conflict(bitmap_t* interrupt_bitmap, irqid_t int_id)
 
 void interrupts_arch_vm_assign(struct vm *vm, irqid_t id)
 {
-    vaplic_set_hw(vm, id);
+    virqc_set_hw(vm, id);
 }

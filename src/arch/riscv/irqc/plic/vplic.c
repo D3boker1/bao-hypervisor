@@ -208,7 +208,7 @@ static irqid_t vplic_claim(struct vcpu *vcpu, int vcntxt)
 static void vplic_complete(struct vcpu *vcpu, int vcntxt, irqid_t int_id)
 {
     if(vplic_get_hw(vcpu ,int_id)){
-        plic_hart[cpu()->arch.plic_cntxt].complete = int_id;
+        irqc_hart[cpu()->arch.plic_cntxt].complete = int_id;
     }
 
     spin_lock(&vcpu->vm->arch.virqc.lock);
@@ -327,14 +327,14 @@ static bool vplic_hart_emul_handler(struct emul_access *acc)
     }
 
     switch (acc->addr & 0xf) {
-        case offsetof(struct plic_hart_hw, threshold):
+        case offsetof(struct irqc_hart_hw, threshold):
             if (acc->write) {
                 vplic_set_threshold(cpu()->vcpu, vcntxt, vcpu_readreg(cpu()->vcpu, acc->reg));
             } else {
                 vcpu_writereg(cpu()->vcpu, acc->reg, vplic_get_theshold(cpu()->vcpu, vcntxt));
             }
             break;
-        case offsetof(struct plic_hart_hw, claim):
+        case offsetof(struct irqc_hart_hw, claim):
             if (acc->write) {
                 vplic_complete(cpu()->vcpu, vcntxt, vcpu_readreg(cpu()->vcpu, acc->reg));
             } else {
@@ -350,16 +350,14 @@ void vxplic_init(struct vm *vm, vaddr_t vplic_base)
 {
     if (cpu()->id == vm->master) {
         vm->arch.virqc.plic_global_emul = (struct emul_mem) {
-            .va_base = vplic_base,
-            .size = sizeof(struct plic_global_hw),
+            .size = sizeof(struct irqc_global_hw),
             .handler = vplic_global_emul_handler
         };
 
         vm_emul_add_mem(vm, &vm->arch.virqc.plic_global_emul);
 
         vm->arch.virqc.plic_claimcomplte_emul = (struct emul_mem) {
-            .va_base = vplic_base + PLIC_CLAIMCMPLT_OFF,
-            .size = sizeof(struct plic_hart_hw) * vm->cpu_num * PLAT_PLIC_CNTXT_PER_HART,
+            .size = sizeof(struct irqc_hart_hw) * vm->cpu_num * PLAT_PLIC_CNTXT_PER_HART,
             .handler = vplic_hart_emul_handler
         };
 

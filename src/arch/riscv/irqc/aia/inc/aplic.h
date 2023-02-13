@@ -81,7 +81,7 @@ typedef unsigned irqid_t;
 #define APLIC_TARGET_PRIO_DEFAULT       (1)
 #define APLIC_TARGET_MASK               (0xFFFC00FF)
 /** Data structures for APLIC devices */
-struct aplic_global {
+struct irqc_global_hw {
     uint32_t domaincfg;
     uint32_t sourcecfg[APLIC_NUM_SRCCFG_REGS];
     uint8_t  reserved1[0x1C00 - 0x1000];
@@ -108,7 +108,7 @@ struct aplic_global {
     uint32_t target[APLIC_NUM_TARGET_REGS];
 } __attribute__((__packed__, aligned(PAGE_SIZE)));
 
-struct aplic_idc {
+struct irqc_hart_hw {
     uint32_t idelivery;
     uint32_t iforce;
     uint32_t ithreshold;
@@ -119,8 +119,8 @@ struct aplic_idc {
 
 extern uint32_t impl_src[APLIC_MAX_INTERRUPTS];
 
-extern volatile struct aplic_global *aplic_domain;
-extern volatile struct aplic_idc *idc;
+extern volatile struct irqc_global_hw *irqc_global;
+extern volatile struct irqc_hart_hw *irqc_hart;
 
 /** Initialization Functions */
 /**

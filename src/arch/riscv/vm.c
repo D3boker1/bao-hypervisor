@@ -6,7 +6,7 @@
 #include <vm.h>
 #include <page_table.h>
 #include <arch/csrs.h>
-#include <vxplic.h>
+#include <irqc.h>
 #include <arch/instructions.h>
 #include <string.h>
 #include <config.h>

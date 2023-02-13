@@ -7,7 +7,7 @@
 #define __ARCH_VM_H__
 
 #include <bao.h>
-#include <vxplic.h>
+#include <irqc.h>
 #include <arch/sbi.h>
 
 #define REG_RA (1)
