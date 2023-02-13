@@ -11,11 +11,11 @@
 
 #define APLIC_PLAT_IDC_NUM (PLAT_CPU_NUM)
 
-/**==== APLIC Specific types ====*/
+/** APLIC Specific types */
 typedef unsigned idcid_t;
 typedef unsigned irqid_t;
 
-/**==== APLIC Addresses defines ====*/
+/** APLIC Addresses defines */
 #define APLIC_IDC_OFF                   (0x4000)
 #define APLIC_IDC_SIZE                  (32)
 
@@ -26,7 +26,7 @@ typedef unsigned irqid_t;
 #define APLIC_NUM_CLRIx_REGS            (APLIC_MAX_INTERRUPTS / 32)
 #define APLIC_NUM_SETIx_REGS            (APLIC_MAX_INTERRUPTS / 32)
 
-/**==== Source Mode defines ====*/
+/** Source Mode defines */
 #define APLIC_SOURCECFG_SM_MASK         0x00000007
 #define APLIC_SOURCECFG_SM_INACTIVE     0x0
 #define APLIC_SOURCECFG_SM_DETACH       0x1
@@ -40,7 +40,7 @@ typedef unsigned irqid_t;
 #define IMPLEMENTED                     (1)
 #define NOT_IMPLEMENTED                 (0)
 
-/**==== APLIC Offsets ====*/
+/** APLIC Offsets */
 #define APLIC_DOMAIN_OFF                (0x0000)
 #define APLIC_SOURCECFG_OFF             (0x0004)
 #define APLIC_MMSIADDRCFG_OFF           (0x1BC0)
@@ -60,14 +60,14 @@ typedef unsigned irqid_t;
 #define APLIC_GENMSI_OFF                (0x3000)
 #define APLIC_TARGET_OFF                (0x3004)
 
-/**==== IDC Offsets ====*/
+/** IDC Offsets */
 #define APLIC_IDC_IDELIVERY_OFF         (0x00)
 #define APLIC_IDC_IFORCE_OFF            (0x04)
 #define APLIC_IDC_ITHRESHOLD_OFF        (0x08)
 #define APLIC_IDC_TOPI_OFF              (0x18)
 #define APLIC_IDC_CLAIMI_OFF            (0x1C)
 
-/**==== APLIC fields and masks defines ====*/
+/** APLIC fields and masks defines */
 #define APLIC_DOMAINCFG_DM              (1U << 2)
 #define APLIC_DOMAINCFG_IE              (1U << 8)
 #define APLIC_DOMAINCFG_RO80            (0x80 << 24)
@@ -80,7 +80,7 @@ typedef unsigned irqid_t;
 #define APLIC_TARGET_IPRIO_MASK         (0xFF)
 #define APLIC_TARGET_PRIO_DEFAULT       (1)
 #define APLIC_TARGET_MASK               (0xFFFC00FF)
-/**==== Data structures for APLIC devices ====*/
+/** Data structures for APLIC devices */
 struct aplic_global {
     uint32_t domaincfg;
     uint32_t sourcecfg[APLIC_NUM_SRCCFG_REGS];
@@ -122,7 +122,7 @@ extern uint32_t impl_src[APLIC_MAX_INTERRUPTS];
 extern volatile struct aplic_global *aplic_domain;
 extern volatile struct aplic_idc *idc;
 
-/**==== Initialization Functions ====*/
+/** Initialization Functions */
 /**
  * @brief Initialize the aplic domain.
  * 
@@ -136,7 +136,7 @@ void aplic_init(void);
  */
 void aplic_idc_init(void);
 
-/**==== Domain functions ====*/
+/** Domain functions */
 /**
  * @brief Write to aplic's sourcecfg register
  * 
@@ -240,7 +240,7 @@ void aplic_set_target(irqid_t int_id, uint32_t val);
  */
 uint32_t aplic_get_target(irqid_t int_id);
 
-/**==== IDC functions ====*/
+/** IDC functions */
 /**
  * @brief Useful for testing. Seting this register forces an interrupt to
  * be asserted to the corresponding hart
@@ -259,7 +259,7 @@ void aplic_idc_set_iforce(idcid_t idc_id, bool en);
  */
 uint32_t aplic_idc_get_claimi(idcid_t idc_id);
 
-/**==== APLIC Interrupt handler ====*/
+/** APLIC Interrupt handler */
 /**
  * @brief Handles an incomming interrupt in irq controller.
  * 
