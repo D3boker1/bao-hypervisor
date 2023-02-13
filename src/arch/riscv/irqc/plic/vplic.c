@@ -4,7 +4,7 @@
  */
 
 #include <vplic.h>
-#include <vxplic.h>
+#include <irqc.h>
 #include <cpu.h>
 #include <emul.h>
 #include <mem.h>
@@ -346,10 +346,11 @@ static bool vplic_hart_emul_handler(struct emul_access *acc)
     return true;
 }
 
-void vxplic_init(struct vm *vm, vaddr_t vplic_base)
+void vxplic_init(struct vm *vm, struct arch_platform *arch_platform)
 {
     if (cpu()->id == vm->master) {
         vm->arch.virqc.plic_global_emul = (struct emul_mem) {
+            .va_base = arch_platform->plic_base,
             .size = sizeof(struct irqc_global_hw),
             .handler = vplic_global_emul_handler
         };
@@ -357,6 +358,7 @@ void vxplic_init(struct vm *vm, vaddr_t vplic_base)
         vm_emul_add_mem(vm, &vm->arch.virqc.plic_global_emul);
 
         vm->arch.virqc.plic_claimcomplte_emul = (struct emul_mem) {
+            .va_base = arch_platform->plic_base + PLIC_CLAIMCMPLT_OFF,
             .size = sizeof(struct irqc_hart_hw) * vm->cpu_num * PLAT_PLIC_CNTXT_PER_HART,
             .handler = vplic_hart_emul_handler
         };
