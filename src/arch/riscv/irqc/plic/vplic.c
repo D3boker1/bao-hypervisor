@@ -29,30 +29,30 @@ static int vplic_vcntxt_to_pcntxt(struct vcpu *vcpu, int vcntxt_id)
 
 static bool vplic_vcntxt_valid(struct vcpu *vcpu, int vcntxt_id) {
     struct plic_cntxt vcntxt = plic_plat_id_to_cntxt(vcntxt_id);
-    return vcntxt_id < vcpu->vm->arch.vxplic.cntxt_num && vcntxt.mode <= PRIV_S;
+    return vcntxt_id < vcpu->vm->arch.virqc.cntxt_num && vcntxt.mode <= PRIV_S;
 }
 
 static bool vplic_get_pend(struct vcpu* vcpu, irqid_t id)
 {
     bool ret = false;
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (id <= PLIC_MAX_INTERRUPTS) ret = bitmap_get(vxplic->pend, id);
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    if (id <= PLIC_MAX_INTERRUPTS) ret = bitmap_get(virqc->pend, id);
     return ret;
 }
 
 static bool vplic_get_act(struct vcpu* vcpu, irqid_t id)
 {
     bool ret = false;
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (id <= PLIC_MAX_INTERRUPTS) ret = bitmap_get(vxplic->act, id);
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    if (id <= PLIC_MAX_INTERRUPTS) ret = bitmap_get(virqc->act, id);
     return ret;
 }
 
 static bool vplic_get_enbl(struct vcpu* vcpu, int vcntxt, irqid_t id)
 {
     bool ret = false;
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (id <= PLIC_MAX_INTERRUPTS) ret = !!bitmap_get(vxplic->enbl[vcntxt], id);
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    if (id <= PLIC_MAX_INTERRUPTS) ret = !!bitmap_get(virqc->enbl[vcntxt], id);
     return ret;
 }
 
@@ -60,8 +60,8 @@ static bool vplic_get_enbl(struct vcpu* vcpu, int vcntxt, irqid_t id)
 static uint32_t vplic_get_prio(struct vcpu *vcpu, irqid_t id)
 {
     uint32_t ret = 0;
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (id <= PLIC_MAX_INTERRUPTS) ret = vxplic->prio[id];
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    if (id <= PLIC_MAX_INTERRUPTS) ret = virqc->prio[id];
     return ret;
 }
 
@@ -69,22 +69,22 @@ static uint32_t vplic_get_prio(struct vcpu *vcpu, irqid_t id)
 void vplic_set_hw(struct vm *vm, irqid_t id)
 {
     if (id <= PLIC_MAX_INTERRUPTS) {
-        bitmap_set(vm->arch.vxplic.hw,id);
+        bitmap_set(vm->arch.virqc.hw,id);
     }
 }
 
 static bool vplic_get_hw(struct vcpu* vcpu, irqid_t id)
 {
     bool ret = false;
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    if (id <= PLIC_MAX_INTERRUPTS) ret = bitmap_get(vxplic->hw, id);
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    if (id <= PLIC_MAX_INTERRUPTS) ret = bitmap_get(virqc->hw, id);
     return ret;
 }
 
 static uint32_t vplic_get_theshold(struct vcpu* vcpu, int vcntxt) 
 {
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    return vxplic->threshold[vcntxt];
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    return virqc->threshold[vcntxt];
 }
 
 static irqid_t vplic_next_pending(struct vcpu *vcpu, int vcntxt)
@@ -142,25 +142,25 @@ static void vplic_ipi_handler(uint32_t event, uint64_t data)
 
 static void vplic_set_threshold(struct vcpu* vcpu, int vcntxt, uint32_t threshold) 
 {
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    spin_lock(&vxplic->lock);
-    vxplic->threshold[vcntxt] = threshold;
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    spin_lock(&virqc->lock);
+    virqc->threshold[vcntxt] = threshold;
     int pcntxt = vplic_vcntxt_to_pcntxt(vcpu, vcntxt);
     plic_set_threshold(pcntxt, threshold);
-    spin_unlock(&vxplic->lock);
+    spin_unlock(&virqc->lock);
 
     vplic_update_hart_line(vcpu, vcntxt);
 }
 
 static void vplic_set_enbl(struct vcpu* vcpu, int vcntxt, irqid_t id, bool set)
 {
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    spin_lock(&vxplic->lock);
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    spin_lock(&virqc->lock);
     if (id <= PLIC_MAX_INTERRUPTS && vplic_get_enbl(vcpu, vcntxt, id) != set) {
         if(set){
-            bitmap_set(vxplic->enbl[vcntxt],id);
+            bitmap_set(virqc->enbl[vcntxt],id);
         } else {
-            bitmap_clear(vxplic->enbl[vcntxt],id);
+            bitmap_clear(virqc->enbl[vcntxt],id);
         }
 
         if(vplic_get_hw(vcpu, id)){
@@ -170,19 +170,19 @@ static void vplic_set_enbl(struct vcpu* vcpu, int vcntxt, irqid_t id, bool set)
             vplic_update_hart_line(vcpu, vcntxt);
         }
     }
-    spin_unlock(&vxplic->lock);
+    spin_unlock(&virqc->lock);
 }
 
 static void vplic_set_prio(struct vcpu *vcpu, irqid_t id, uint32_t prio)
 {
-    struct virqc *vxplic = &vcpu->vm->arch.vxplic;
-    spin_lock(&vxplic->lock);
+    struct virqc *virqc = &vcpu->vm->arch.virqc;
+    spin_lock(&virqc->lock);
     if (id <= PLIC_MAX_INTERRUPTS && vplic_get_prio(vcpu, id) != prio) {
-        vxplic->prio[id] = prio;
+        virqc->prio[id] = prio;
         if(vplic_get_hw(vcpu,id)){
             plic_set_prio(id, prio);
         } else {
-            for(size_t i = 0; i < vxplic->cntxt_num; i++) {
+            for(size_t i = 0; i < virqc->cntxt_num; i++) {
                 if(plic_plat_id_to_cntxt(i).mode != PRIV_S) continue;
                 if(vplic_get_enbl(vcpu, i, id)) {
                     vplic_update_hart_line(vcpu, i);
@@ -190,16 +190,16 @@ static void vplic_set_prio(struct vcpu *vcpu, irqid_t id, uint32_t prio)
             }
         }
     }
-    spin_unlock(&vxplic->lock);
+    spin_unlock(&virqc->lock);
 }
 
 static irqid_t vplic_claim(struct vcpu *vcpu, int vcntxt)
 {
-    spin_lock(&vcpu->vm->arch.vxplic.lock);
+    spin_lock(&vcpu->vm->arch.virqc.lock);
     irqid_t int_id = vplic_next_pending(vcpu, vcntxt);
-    bitmap_clear(vcpu->vm->arch.vxplic.pend, int_id);
-    bitmap_set(vcpu->vm->arch.vxplic.act, int_id);
-    spin_unlock(&vcpu->vm->arch.vxplic.lock);
+    bitmap_clear(vcpu->vm->arch.virqc.pend, int_id);
+    bitmap_set(vcpu->vm->arch.virqc.act, int_id);
+    spin_unlock(&vcpu->vm->arch.virqc.lock);
 
     vplic_update_hart_line(vcpu, vcntxt);
     return int_id;
@@ -211,27 +211,27 @@ static void vplic_complete(struct vcpu *vcpu, int vcntxt, irqid_t int_id)
         plic_hart[cpu()->arch.plic_cntxt].complete = int_id;
     }
 
-    spin_lock(&vcpu->vm->arch.vxplic.lock);
-    bitmap_clear(vcpu->vm->arch.vxplic.act, int_id);
-    spin_unlock(&vcpu->vm->arch.vxplic.lock);
+    spin_lock(&vcpu->vm->arch.virqc.lock);
+    bitmap_clear(vcpu->vm->arch.virqc.act, int_id);
+    spin_unlock(&vcpu->vm->arch.virqc.lock);
 
     vplic_update_hart_line(vcpu, vcntxt);
 }
 
 void vplic_inject(struct vcpu *vcpu, irqid_t id)
 {
-    struct virqc * vxplic = &vcpu->vm->arch.vxplic;
-    spin_lock(&vxplic->lock);
+    struct virqc * virqc = &vcpu->vm->arch.virqc;
+    spin_lock(&virqc->lock);
     if (id > 0 && id <= PLIC_MAX_INTERRUPTS && !vplic_get_pend(vcpu, id)) {
         
-        bitmap_set(vxplic->pend, id);
+        bitmap_set(virqc->pend, id);
 
         if(vplic_get_hw(vcpu, id)) {
             struct plic_cntxt vcntxt = {vcpu->id, PRIV_S};
             int vcntxt_id = plic_plat_cntxt_to_id(vcntxt);
             vplic_update_hart_line(vcpu, vcntxt_id);
         } else {
-            for(size_t i = 0; i < vxplic->cntxt_num; i++) {
+            for(size_t i = 0; i < virqc->cntxt_num; i++) {
                 if(plic_plat_id_to_cntxt(i).mode != PRIV_S) continue;
                 if(vplic_get_enbl(vcpu, i, id) && 
                 vplic_get_prio(vcpu, id) > vplic_get_theshold(vcpu, i)) {
@@ -240,7 +240,7 @@ void vplic_inject(struct vcpu *vcpu, irqid_t id)
             }
         }
     }
-    spin_unlock(&vxplic->lock);
+    spin_unlock(&virqc->lock);
 }
 
 static void vplic_emul_prio_access(struct emul_access *acc)
@@ -349,23 +349,23 @@ static bool vplic_hart_emul_handler(struct emul_access *acc)
 void vxplic_init(struct vm *vm, vaddr_t vplic_base)
 {
     if (cpu()->id == vm->master) {
-        vm->arch.vxplic.plic_global_emul = (struct emul_mem) {
+        vm->arch.virqc.plic_global_emul = (struct emul_mem) {
             .va_base = vplic_base,
             .size = sizeof(struct plic_global_hw),
             .handler = vplic_global_emul_handler
         };
 
-        vm_emul_add_mem(vm, &vm->arch.vxplic.plic_global_emul);
+        vm_emul_add_mem(vm, &vm->arch.virqc.plic_global_emul);
 
-        vm->arch.vxplic.plic_claimcomplte_emul = (struct emul_mem) {
+        vm->arch.virqc.plic_claimcomplte_emul = (struct emul_mem) {
             .va_base = vplic_base + PLIC_CLAIMCMPLT_OFF,
             .size = sizeof(struct plic_hart_hw) * vm->cpu_num * PLAT_PLIC_CNTXT_PER_HART,
             .handler = vplic_hart_emul_handler
         };
 
-        vm_emul_add_mem(vm, &vm->arch.vxplic.plic_claimcomplte_emul);
+        vm_emul_add_mem(vm, &vm->arch.virqc.plic_claimcomplte_emul);
 
         /* assumes 2 contexts per hart */
-        vm->arch.vxplic.cntxt_num = vm->cpu_num * 2; 
+        vm->arch.virqc.cntxt_num = vm->cpu_num * 2; 
     }
 }

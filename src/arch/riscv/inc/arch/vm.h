@@ -47,7 +47,7 @@ struct arch_vm_platform {
 };
 
 struct vm_arch {
-    struct virqc vxplic;
+    struct virqc virqc;
 };
 
 struct vcpu_arch {
