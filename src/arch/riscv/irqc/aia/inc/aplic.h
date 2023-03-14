@@ -76,10 +76,14 @@ typedef unsigned irqid_t;
 #define APLIC_SRCCFG_SM                 ((1U << 0) | (1U << 1) | (1U << 2))
 
 #define APLIC_TARGET_HART_IDX_SHIFT     (18)
+#define APLIC_TARGET_GUEST_IDX_SHIFT    (12)
 #define APLIC_TARGET_HART_IDX_MASK      (0x3FFF)
 #define APLIC_TARGET_IPRIO_MASK         (0xFF)
+#define APLIC_TARGET_EEID_MASK          (0x7FF)
+#define APLIC_TARGET_GUEST_INDEX_MASK   (0x3F)
 #define APLIC_TARGET_PRIO_DEFAULT       (1)
-#define APLIC_TARGET_MASK               (0xFFFC00FF)
+#define APLIC_TARGET_DIRECT_MASK        (0xFFFC00FF)
+#define APLIC_TARGET_MSI_MASK           (0xFFFFF7FF)
 /** Data structures for APLIC devices */
 struct irqc_global_hw {
     uint32_t domaincfg;
@@ -121,6 +125,14 @@ extern uint32_t impl_src[APLIC_MAX_INTERRUPTS];
 
 extern volatile struct irqc_global_hw *irqc_global;
 extern volatile struct irqc_hart_hw *irqc_hart;
+
+/**
+ * @brief Check if the phys APLIC is in MSI mode
+ * 
+ * @return true : it is in MSI mode
+ * @return false : it is in direct mode
+ */
+bool aplic_msi_mode(void);
 
 /** Initialization Functions */
 /**

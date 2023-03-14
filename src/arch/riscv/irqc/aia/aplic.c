@@ -55,11 +55,19 @@ static size_t aplic_scan_impl_int(void)
     return count;
 }
 
+bool inline aplic_msi_mode(void)
+{
+    return (irqc_global->domaincfg & APLIC_DOMAINCFG_DM) && APLIC_DOMAINCFG_DM;
+}
+
 /** APLIC public functions */
 /** Initialization Functions */
 void aplic_init(void)
 {
     irqc_global->domaincfg = 0;
+    #if (IRQC == AIA)
+    irqc_global->domaincfg |= APLIC_DOMAINCFG_DM;
+    #endif
 
     /** Clear all pending and enabled bits*/
     for (size_t i = 0; i < APLIC_NUM_CLRIx_REGS; i++) {
@@ -72,10 +80,14 @@ void aplic_init(void)
     /** Sets the default value of hart index and prio for implemented sources*/
     for (size_t i = 0; i < APLIC_NUM_TARGET_REGS; i++){
         if(impl_src[i] == IMPLEMENTED){
-            irqc_global->target[i] = APLIC_TARGET_PRIO_DEFAULT;
+            if (!aplic_msi_mode())
+            {
+                irqc_global->target[i] = APLIC_TARGET_PRIO_DEFAULT;
+            } else {
+                irqc_global->target[i] =/*  (0x1 << APLIC_TARGET_GUEST_IDX_SHIFT) | */ i;
+            }
         }
     }
-
     irqc_global->domaincfg |= APLIC_DOMAINCFG_IE;
 }
 
@@ -169,22 +181,27 @@ void aplic_set_target(irqid_t int_id, uint32_t val)
 {
     uint32_t real_int_id = int_id - 1;
     uint8_t priority = val & APLIC_TARGET_IPRIO_MASK;
+    uint32_t eiid = val & APLIC_TARGET_EEID_MASK;
     uint32_t hart_index = (val >> APLIC_TARGET_HART_IDX_SHIFT);
-    //uint32_t guest_index = (irqc_global->target[real_int_id] >> 12) & 0x3F;
-
+    uint32_t guest_index = (val >> APLIC_TARGET_GUEST_IDX_SHIFT) 
+                            & APLIC_TARGET_GUEST_INDEX_MASK;
+    
     if(impl_src[real_int_id] == IMPLEMENTED){
         /** Evaluate in what delivery mode the domain is configured*/
         /** Direct Mode*/
-        if(((irqc_global->domaincfg & APLIC_DOMAINCFG_CTRL_MASK) & DOMAINCFG_DM) == 0){
+        if(!aplic_msi_mode()){
+            val &= APLIC_TARGET_DIRECT_MASK;
             /** Checks priority and hart index range */
-            if((priority > 0) && (priority <= APLIC_TARGET_IPRIO_MASK) && 
-               (hart_index < APLIC_PLAT_IDC_NUM)){
+            if((priority > 0) && (hart_index < APLIC_PLAT_IDC_NUM)){
                 irqc_global->target[real_int_id] = val;
             }
         }
         /** MSI Mode*/
         else{ 
-
+            val &= APLIC_TARGET_MSI_MASK;
+            if((eiid > 0) && (hart_index < PLAT_CPU_NUM) && (guest_index == 1)){
+                irqc_global->target[real_int_id] = val;
+            }
         }
     }
 }

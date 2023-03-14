@@ -35,7 +35,11 @@ void vcpu_arch_reset(struct vcpu *vcpu, vaddr_t entry)
     
     CSRW(sscratch, &vcpu->regs);
 
-    vcpu->regs.hstatus = HSTATUS_SPV | HSTATUS_VSXL_64;
+    /** Is this teh best place to set the VGEIN? 
+     * What happens when an imsic is not implemented but VGEIN = 1 ?
+    */
+    vcpu->regs.hstatus = HSTATUS_SPV | HSTATUS_VSXL_64 | 
+                        (1ULL << HSTATUS_VGEIN_OFF);
     vcpu->regs.sstatus = SSTATUS_SPP_BIT | SSTATUS_FS_DIRTY | SSTATUS_XS_DIRTY;
     vcpu->regs.sepc = entry;
     vcpu->regs.a0 = vcpu->arch.hart_id = vcpu->id;

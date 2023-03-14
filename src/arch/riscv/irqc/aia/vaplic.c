@@ -158,6 +158,10 @@ CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
 static void vaplic_update_hart_line(struct vcpu* vcpu) 
 {
     int pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu);
+    
+    if (aplic_msi_mode())
+        return;
+    
     /** If the current cpu is the targeting cpu, signal the intp to the hart*/
     /** Else, send a mensage to the targeting cpu */
     if(pcpu_id == cpu()->id) {
@@ -551,29 +555,47 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
          *  values to such a field */
         pcpu_id = vm_translate_to_pcpuid(vcpu->vm, 0);
     }
-    /** Write the physical CPU in hart index */
-    new_val &= APLIC_TARGET_IPRIO_MASK;
-    new_val |= (pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+    
+    if(!aplic_msi_mode()){
+        /** Write the physical CPU in hart index */
+        new_val &= APLIC_TARGET_IPRIO_MASK;
+        new_val |= (pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
 
-    if (intp_id > 0  && intp_id < APLIC_MAX_INTERRUPTS && 
-        vaplic_get_target(vcpu, intp_id) != new_val) {
+        if (intp_id > 0  && intp_id < APLIC_MAX_INTERRUPTS && 
+            vaplic_get_target(vcpu, intp_id) != new_val) {
 
-        new_val &= APLIC_TARGET_MASK;
-        /** If prio is 0, set to 1 (max)*/
-        if ((new_val & APLIC_TARGET_IPRIO_MASK) == 0){
-            new_val |= APLIC_TARGET_PRIO_DEFAULT;
+            new_val &= APLIC_TARGET_DIRECT_MASK;
+            /** If prio is 0, set to 1 (max)*/
+            if ((new_val & APLIC_TARGET_IPRIO_MASK) == 0){
+                new_val |= APLIC_TARGET_PRIO_DEFAULT;
+            }
+            
+            if(vaplic_get_hw(vcpu, intp_id)){
+                aplic_set_target(intp_id, new_val);
+                if(impl_src[intp_id] == IMPLEMENTED && 
+                aplic_get_target(intp_id) == new_val){
+                    virqc->target[intp_id-1] = new_val;
+                }
+            } else {
+                virqc->target[intp_id-1] = new_val;
+            }
+            vaplic_update_hart_line(vcpu);
         }
-        
+
+    } else {
+        new_val &= APLIC_TARGET_EEID_MASK;
+        new_val |= (1ULL<<APLIC_TARGET_GUEST_IDX_SHIFT);
+        new_val |= (pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+
         if(vaplic_get_hw(vcpu, intp_id)){
             aplic_set_target(intp_id, new_val);
             if(impl_src[intp_id] == IMPLEMENTED && 
-               aplic_get_target(intp_id) == new_val){
+            aplic_get_target(intp_id) == new_val){
                 virqc->target[intp_id-1] = new_val;
             }
         } else {
             virqc->target[intp_id-1] = new_val;
         }
-        vaplic_update_hart_line(vcpu);
     }
     spin_unlock(&virqc->lock);
 }
@@ -927,18 +949,6 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
         case APLIC_SOURCECFG_OFF ... APLIC_SOURCECFG_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
             vaplic_emul_srccfg_access(acc);
             break;
-        // case APLIC_MMSIADDRCFG_OFF:
-        //     vaplic_emul_mmsiaddrcfg_access(acc);
-        //     break;
-        // case APLIC_MMSIADDRCFGH_OFF:
-        //     vaplic_emul_mmsiaddrcfgh_access(acc);
-        //     break;
-        // case APLIC_SMSIADDRCFG_OFF:
-        //     vaplic_emul_smsiaddrcfg_access(acc);
-        //     break;
-        // case APLIC_SMSIADDRCFGH_OFF:
-        //     vaplic_emul_smsiaddrcfgh_access(acc);
-        //     break;
         case APLIC_SETIP_OFF ... APLIC_SETIP_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
             vaplic_emul_setip_access(acc);
             break;
@@ -1043,15 +1053,22 @@ void vxplic_init(struct vm *vm, struct arch_platform *arch_platform)
 
         vm_emul_add_mem(vm, &vm->arch.virqc.aplic_domain_emul);
 
-        vm->arch.virqc.aplic_idc_emul = (struct emul_mem) {
+        /** 
+         *  Emulate the IDC only if the aplic is in direct mode.
+         *  Should we do not compile the IDC functions based on a compiler 
+         *  macro (IRQC = AIA)?  
+        */
+        if (!aplic_msi_mode())
+        {
+            vm->arch.virqc.aplic_idc_emul = (struct emul_mem) {
             .va_base = arch_platform->plic_base + APLIC_IDC_OFF,
             .size = sizeof(struct irqc_hart_hw)*APLIC_PLAT_IDC_NUM,
             .handler = vaplic_idc_emul_handler
-        };
+            };
 
-        vm_emul_add_mem(vm, &vm->arch.virqc.aplic_idc_emul);
-
-        /* 1 IDC per hart */
-        vm->arch.virqc.idc_num = vm->cpu_num;
+            vm_emul_add_mem(vm, &vm->arch.virqc.aplic_idc_emul);
+            /* 1 IDC per hart */
+            vm->arch.virqc.idc_num = vm->cpu_num;
+        }
     }
 }
