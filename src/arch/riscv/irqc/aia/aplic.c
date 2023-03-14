@@ -84,7 +84,7 @@ void aplic_init(void)
             {
                 irqc_global->target[i] = APLIC_TARGET_PRIO_DEFAULT;
             } else {
-                irqc_global->target[i] =/*  (0x1 << APLIC_TARGET_GUEST_IDX_SHIFT) | */ i;
+                irqc_global->target[i] = i;
             }
         }
     }
@@ -199,7 +199,7 @@ void aplic_set_target(irqid_t int_id, uint32_t val)
         /** MSI Mode*/
         else{ 
             val &= APLIC_TARGET_MSI_MASK;
-            if((eiid > 0) && (hart_index < PLAT_CPU_NUM) && (guest_index == 1)){
+            if((eiid > 0) && (hart_index < PLAT_CPU_NUM) && (guest_index <= 1)){
                 irqc_global->target[real_int_id] = val;
             }
         }

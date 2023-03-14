@@ -7,7 +7,6 @@
 #include <interrupts.h>
 
 #include <irqc.h>
-#include <arch/sbi.h>
 #include <cpu.h>
 #include <mem.h>
 #include <platform.h>
@@ -43,7 +42,7 @@ void interrupts_arch_init()
 
 void interrupts_arch_ipi_send(cpuid_t target_cpu, irqid_t ipi_id)
 {
-    sbi_send_ipi(1ULL << target_cpu, 0);
+    irqc_send_ipi(target_cpu, ipi_id);
 }
 
 void interrupts_arch_cpu_enable(bool en)

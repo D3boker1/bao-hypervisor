@@ -44,6 +44,7 @@
 
 struct arch_vm_platform {
     paddr_t plic_base;
+    paddr_t imsic_base;
 };
 
 struct vm_arch {

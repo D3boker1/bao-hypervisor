@@ -5,6 +5,7 @@
 #include <plic.h>
 #include <cpu.h>
 #include <vplic.h>
+#include <arch/sbi.h>
 
 #define XPLIC_MAX_INTERRUPTS (1024)
 
@@ -44,6 +45,11 @@ static inline bool irqc_get_pend(irqid_t int_id)
 static inline void irqc_set_clrienum(irqid_t int_id)
 {
     WARNING("trying to clear external interrupt");
+}
+
+static inline void irqc_send_ipi(cpuid_t target_cpu, irqid_t ipi_id)
+{
+    sbi_send_ipi(1ULL << target_cpu, 0);
 }
 
 static inline void virqc_set_hw(struct vm *vm, irqid_t id)

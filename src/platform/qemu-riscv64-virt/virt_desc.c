@@ -28,6 +28,7 @@ struct platform platform = {
         .plic_base = 0xd000000,
         #elif (IRQC == AIA)
         .plic_base = 0xd000000,
+        .imsic_base = 0x28000000,
         #else 
         #error "unknown IRQC type " IRQC
         #endif

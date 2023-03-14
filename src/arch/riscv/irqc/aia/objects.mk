@@ -3,3 +3,4 @@
 
 cpu-objs-y+=irqc/$(IRQC_DIR)/aplic.o
 cpu-objs-y+=irqc/$(IRQC_DIR)/vaplic.o
+cpu-objs-y+=irqc/$(IRQC_DIR)/imsic.o

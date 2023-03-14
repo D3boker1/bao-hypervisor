@@ -14,6 +14,7 @@
 
 struct arch_platform {
     paddr_t plic_base;
+    paddr_t imsic_base;
 };
 
 #endif /* __ARCH_PLATFORM_H__ */

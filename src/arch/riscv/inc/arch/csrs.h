@@ -8,6 +8,10 @@
 
 #include <bao.h>
 
+#define CSR_SISELECT			(0x150)
+#define CSR_SIREG			    (0x151)
+#define CSR_STOPEI			    (0x15c)
+
 #define CSR_VSSTATUS 0x200
 #define CSR_VSIE 0x204
 #define CSR_VSTVEC 0x205
