@@ -19,6 +19,10 @@
 #define TIMR_INT_ID (XPLIC_MAX_INTERRUPTS + 2)
 #define MAX_INTERRUPTS (TIMR_INT_ID + 1)
 
+#if (IRQC == AIA)
+#define IPI_CPU_MSG 31
+#else
 #define IPI_CPU_MSG SOFT_INT_ID
+#endif
 
 #endif /* __ARCH_INTERRUPTS_H__ */
