@@ -74,6 +74,11 @@ void interrupts_arch_enable(irqid_t int_id, bool en)
 
 void interrupts_arch_handle()
 {
+    /** 
+     *  We should change this to read the stopi
+     *  Lets do it further in the development
+     *  
+    */
     unsigned long _scause = CSRR(scause);
 
     switch (_scause) {
