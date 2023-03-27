@@ -14,11 +14,19 @@
 #define IMSIC_EIP		        (0x80)
 #define IMSIC_EIE		        (0xC0)
 
-struct imsic_global_hw
+struct imsic_intp_file_hw
 {
     uint32_t seteipnum_le;
     uint32_t seteipnum_be;
 }__attribute__((__packed__, aligned(0x1000ULL)));
+
+struct imsic_global_hw
+{
+    struct imsic_intp_file_hw s_file;
+    // struct imsic_intp_file_hw vs_file[IMSIC_NUM_FILES];
+}__attribute__((__packed__, aligned(0x1000ULL)));
+
+struct vm;
 
 extern volatile struct imsic_global_hw *imsic[PLAT_CPU_NUM];
 
@@ -34,6 +42,8 @@ typedef unsigned irqid_t;
  * 
  */
 void imsic_init(void);
+
+// void vimsic_init(struct vm *vm, struct arch_platform *arch_platform);
 
 /**
  * @brief Check if a given interrupt is pending 
