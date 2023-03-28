@@ -79,6 +79,27 @@ void interrupts_arch_handle()
      *  Lets do it further in the development
      *  
     */
+    #if (IRQC == AIA)
+    unsigned long stopi;
+
+	while ((stopi = CSRR(CSR_STOPI))) {
+		stopi = stopi >> TOPI_IID_SHIFT;
+		switch (stopi) {
+		case IRQ_S_SOFT:
+			interrupts_handle(SOFT_INT_ID);
+            CSRC(sip, SIP_SSIP);
+            break;
+		case IRQ_S_TIMER:
+			interrupts_handle(TIMR_INT_ID);
+            break;
+		case IRQ_S_EXT:
+			irqc_handle();
+			break;
+		default:
+            break;
+		}
+	}
+    #else
     unsigned long _scause = CSRR(scause);
 
     switch (_scause) {
@@ -103,6 +124,7 @@ void interrupts_arch_handle()
             // WARNING("unkown interrupt");
             break;
     }
+    #endif
 }
 
 bool interrupts_arch_check(irqid_t int_id)
