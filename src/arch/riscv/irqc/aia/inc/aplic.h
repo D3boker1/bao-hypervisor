@@ -12,7 +12,7 @@
 #define APLIC_PLAT_IDC_NUM (PLAT_CPU_NUM)
 
 /** APLIC Specific types */
-typedef unsigned idcid_t;
+typedef cpuid_t idcid_t;
 
 /** APLIC Addresses defines */
 #define APLIC_IDC_OFF                   (0x4000)
