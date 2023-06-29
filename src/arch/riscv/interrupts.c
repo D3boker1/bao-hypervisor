@@ -14,6 +14,10 @@
 #include <arch/csrs.h>
 #include <fences.h>
 
+#ifndef IRQC
+#error "IRQC must be specified"
+#endif
+
 void interrupts_arch_init()
 {
     if (cpu()->id  == CPU_MASTER) {   
@@ -65,11 +69,6 @@ void interrupts_arch_enable(irqid_t int_id, bool en)
 
 void interrupts_arch_handle()
 {
-    /** 
-     *  We should change this to read the stopi
-     *  Lets do it further in the development
-     *  
-    */
     #if (IRQC == AIA)
     unsigned long stopi;
 
@@ -90,7 +89,7 @@ void interrupts_arch_handle()
             break;
 		}
 	}
-    #else
+    #elif ((IRQC == APLIC) || (IRQC == PLIC))
     unsigned long _scause = CSRR(scause);
 
     switch (_scause) {
@@ -115,6 +114,8 @@ void interrupts_arch_handle()
             // WARNING("unkown interrupt");
             break;
     }
+    #else
+    #error "IRQC not defined"
     #endif
 }
 
