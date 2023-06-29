@@ -113,12 +113,12 @@ void vcpu_arch_entry();
 
 static inline void vcpu_arch_inject_hw_irq(struct vcpu *vcpu, uint64_t id)
 {
-    vcpu_arch_inject_hw_irq_vxplic(vcpu, id);
+    virqc_inject(vcpu, id);
 }
 
 static inline void vcpu_arch_inject_irq(struct vcpu *vcpu, uint64_t id)
 {
-    vcpu_arch_inject_hw_irq_vxplic(vcpu, id);
+    virqc_inject(vcpu, id);
 }
 
 #endif /* __ARCH_VM_H__ */

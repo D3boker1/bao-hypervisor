@@ -32,12 +32,7 @@ void vplic_inject(struct vcpu *vcpu, irqid_t id);
 void vplic_set_hw(struct vm *vm, irqid_t id);
 
 typedef struct vcpu vcpu_t;
-static inline void vcpu_arch_inject_hw_irq_vxplic(vcpu_t *vcpu, uint64_t id)
-{
-    vplic_inject(vcpu, id);
-}
-
-static inline void vcpu_arch_inject_irq_vxplic(vcpu_t *vcpu, uint64_t id)
+static inline void virqc_inject(vcpu_t *vcpu, uint64_t id)
 {
     vplic_inject(vcpu, id);
 }
