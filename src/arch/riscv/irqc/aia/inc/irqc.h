@@ -7,7 +7,7 @@
 #include <vaplic.h>
 #include <arch/sbi.h>
 
-#define XPLIC_MAX_INTERRUPTS (1024)
+#define IRQC_MAX_INTERRUPTS (1024)
 
 #define HART_REG_OFF APLIC_IDC_OFF
 #define IRQC_HART_INST APLIC_PLAT_IDC_NUM

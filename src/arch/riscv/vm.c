@@ -21,7 +21,7 @@ void vm_arch_init(struct vm *vm, const struct vm_config *config)
 
     CSRW(CSR_HGATP, hgatp);
 
-    vxplic_init(vm, &platform.arch);
+    virqc_init(vm, &platform.arch);
 }
 
 void vcpu_arch_init(struct vcpu *vcpu, struct vm *vm) {

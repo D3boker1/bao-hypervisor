@@ -346,7 +346,7 @@ static bool vplic_hart_emul_handler(struct emul_access *acc)
     return true;
 }
 
-void vxplic_init(struct vm *vm, struct arch_platform *arch_platform)
+void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
 {
     if (cpu()->id == vm->master) {
         vm->arch.virqc.plic_global_emul = (struct emul_mem) {
