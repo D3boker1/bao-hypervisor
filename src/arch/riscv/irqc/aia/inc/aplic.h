@@ -13,7 +13,6 @@
 
 /** APLIC Specific types */
 typedef unsigned idcid_t;
-typedef unsigned irqid_t;
 
 /** APLIC Addresses defines */
 #define APLIC_IDC_OFF                   (0x4000)
