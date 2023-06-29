@@ -30,8 +30,6 @@ volatile struct aplic_global_hw *aplic_global;
 volatile struct aplic_hart_hw *aplic_hart;
 
 /** APLIC private data */
-size_t APLIC_IMPL_INTERRUPTS;
-size_t APLIC_IMPL_INTERRUPTS_REGS;
 uint32_t impl_src[APLIC_MAX_INTERRUPTS];
 
 /** APLIC private functions */
@@ -86,8 +84,6 @@ void aplic_init(void)
         aplic_global->setip[i] = 0;
         aplic_global->setie[i] = 0;
     }
-
-    APLIC_IMPL_INTERRUPTS = aplic_scan_impl_int();
 
     /** Sets the default value of hart index and prio for implemented sources*/
     for (size_t i = 0; i < APLIC_NUM_TARGET_REGS; i++){
