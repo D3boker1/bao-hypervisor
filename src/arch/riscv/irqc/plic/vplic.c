@@ -208,7 +208,7 @@ static irqid_t vplic_claim(struct vcpu *vcpu, int vcntxt)
 static void vplic_complete(struct vcpu *vcpu, int vcntxt, irqid_t int_id)
 {
     if(vplic_get_hw(vcpu ,int_id)){
-        irqc_hart[cpu()->arch.plic_cntxt].complete = int_id;
+        plic_hart[cpu()->arch.plic_cntxt].complete = int_id;
     }
 
     spin_lock(&vcpu->vm->arch.virqc.lock);

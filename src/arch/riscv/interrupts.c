@@ -17,15 +17,6 @@
 void interrupts_arch_init()
 {
     if (cpu()->id  == CPU_MASTER) {   
-        irqc_global = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-            platform.arch.plic_base, NUM_PAGES(sizeof(struct irqc_global_hw)));
-        
-        irqc_hart = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-            platform.arch.plic_base + HART_REG_OFF,
-            NUM_PAGES(sizeof(struct irqc_hart_hw)*IRQC_HART_INST));
-
-        fence_sync();
-        
         irqc_init();
     }
 

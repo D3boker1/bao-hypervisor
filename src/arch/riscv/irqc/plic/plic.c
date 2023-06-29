@@ -6,38 +6,50 @@
 #include <plic.h>
 #include <interrupts.h>
 #include <cpu.h>
+#include <fences.h>
 
 size_t PLIC_IMPL_INTERRUPTS;
 
-volatile struct irqc_global_hw *irqc_global;
+volatile struct irqc_global_hw *plic_global;
 
-volatile struct irqc_hart_hw *irqc_hart;
+volatile struct irqc_hart_hw *plic_hart;
 
 static size_t plic_scan_max_int()
 {
     size_t res = 0;
     for (size_t i = 1; i < PLIC_MAX_INTERRUPTS; i++) {
-        irqc_global->prio[i] = -1;
-        if (irqc_global->prio[i] == 0) {
+        plic_global->prio[i] = -1;
+        if (plic_global->prio[i] == 0) {
             res = i - 1;
             break;
         }
-        irqc_global->prio[i] = 0;
+        plic_global->prio[i] = 0;
     }
     return res;
 }
 
 void plic_init()
 {
+    /** Maps APLIC device */
+    plic_global = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
+            platform.arch.plic_base, NUM_PAGES(sizeof(struct irqc_global_hw)));
+        
+    plic_hart = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
+        platform.arch.plic_base + HART_REG_OFF,
+        NUM_PAGES(sizeof(struct irqc_hart_hw)*IRQC_HART_INST));
+    
+    /** Ensure that instructions after fence have the PLIC fully mapped */
+    fence_sync();
+
     PLIC_IMPL_INTERRUPTS = plic_scan_max_int();
 
     for (size_t i = 0; i <= PLIC_IMPL_INTERRUPTS; i++) {
-        irqc_global->prio[i] = 0;
+        plic_global->prio[i] = 0;
     }
 
     for (size_t i = 0; i < PLIC_PLAT_CNTXT_NUM; i++) {
         for (size_t j = 0; j < PLIC_NUM_ENBL_REGS; j++) {
-            irqc_global->enbl[i][j] = 0;
+            plic_global->enbl[i][j] = 0;
         }
     }
 }
@@ -45,7 +57,7 @@ void plic_init()
 void plic_cpu_init()
 {
     cpu()->arch.plic_cntxt = plic_plat_cntxt_to_id((struct plic_cntxt){cpu()->id, PRIV_S});
-    irqc_hart[cpu()->arch.plic_cntxt].threshold = 0;
+    plic_hart[cpu()->arch.plic_cntxt].threshold = 0;
 }
 
 bool plic_cntxt_valid(unsigned cntxt_id) {
@@ -61,9 +73,9 @@ void plic_set_enbl(unsigned cntxt, irqid_t int_id, bool en)
     
     if (int_id <= PLIC_IMPL_INTERRUPTS && plic_cntxt_valid(cntxt)) { 
         if (en) {
-            irqc_global->enbl[cntxt][reg_ind] |= mask;
+            plic_global->enbl[cntxt][reg_ind] |= mask;
         } else {
-            irqc_global->enbl[cntxt][reg_ind] &= ~mask;
+            plic_global->enbl[cntxt][reg_ind] &= ~mask;
         }
     }
 }
@@ -74,7 +86,7 @@ bool plic_get_enbl(unsigned cntxt, irqid_t int_id)
     uint32_t mask = 1U << (int_id % (sizeof(uint32_t) * 8));
 
     if (int_id <= PLIC_IMPL_INTERRUPTS && plic_cntxt_valid(cntxt))
-        return irqc_global->enbl[cntxt][reg_ind] & mask;
+        return plic_global->enbl[cntxt][reg_ind] & mask;
     else
         return false;
 }
@@ -82,14 +94,14 @@ bool plic_get_enbl(unsigned cntxt, irqid_t int_id)
 void plic_set_prio(irqid_t int_id, uint32_t prio)
 {
     if (int_id <= PLIC_IMPL_INTERRUPTS) {
-        irqc_global->prio[int_id] = prio;
+        plic_global->prio[int_id] = prio;
     }
 }
 
 uint32_t plic_get_prio(irqid_t int_id)
 {
     if (int_id <= PLIC_IMPL_INTERRUPTS)
-        return irqc_global->prio[int_id];
+        return plic_global->prio[int_id];
     else
         return 0;
 }
@@ -100,7 +112,7 @@ bool plic_get_pend(irqid_t int_id)
     int mask = (1U << (int_id % 32));
 
     if (int_id <= PLIC_IMPL_INTERRUPTS)
-        return irqc_global->pend[reg_ind] & mask;
+        return plic_global->pend[reg_ind] & mask;
     else
         return false;
 }
@@ -108,7 +120,7 @@ bool plic_get_pend(irqid_t int_id)
 void plic_set_threshold(unsigned cntxt, uint32_t threshold)
 {
     if(plic_cntxt_valid(cntxt)) {
-        irqc_hart[cntxt].threshold = threshold;
+        plic_hart[cntxt].threshold = threshold;
     }
 }
 
@@ -116,18 +128,18 @@ uint32_t plic_get_thrshold(unsigned cntxt)
 {
     uint32_t threshold = 0;
     if(plic_cntxt_valid(cntxt)) {
-        threshold = irqc_hart[cntxt].threshold;
+        threshold = plic_hart[cntxt].threshold;
     }
     return threshold;
 }
 
 void plic_handle()
 {
-    uint32_t id = irqc_hart[cpu()->arch.plic_cntxt].claim;
+    uint32_t id = plic_hart[cpu()->arch.plic_cntxt].claim;
 
     if (id != 0) {
         enum irq_res res = interrupts_handle(id);
-        if (res == HANDLED_BY_HYP) irqc_hart[cpu()->arch.plic_cntxt].complete = id;
+        if (res == HANDLED_BY_HYP) plic_hart[cpu()->arch.plic_cntxt].complete = id;
     }
 }
 

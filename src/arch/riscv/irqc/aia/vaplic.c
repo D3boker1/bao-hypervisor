@@ -1015,7 +1015,7 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
         return true;
     }
     uint32_t addr = acc->addr - platform.arch.plic_base + APLIC_IDC_OFF;
-    addr = addr - (sizeof(irqc_hart[0]) * idc_id);
+    addr = addr - (sizeof(aplic_hart[0]) * idc_id);
     switch (addr & 0x1F) {
         case APLIC_IDC_IDELIVERY_OFF:
             vaplic_emul_idelivery_access(acc);

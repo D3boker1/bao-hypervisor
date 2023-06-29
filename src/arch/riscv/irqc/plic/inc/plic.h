@@ -38,8 +38,8 @@ struct irqc_hart_hw {
     uint8_t res[0x1000 - 0x0008];
 } __attribute__((__packed__, aligned(PAGE_SIZE)));
 
-extern volatile struct irqc_global_hw *irqc_global;
-extern volatile struct irqc_hart_hw *irqc_hart;
+extern volatile struct irqc_global_hw *plic_global;
+extern volatile struct irqc_hart_hw *plic_hart;
 extern size_t PLIC_IMPL_INTERRUPTS;
 
 void plic_init();

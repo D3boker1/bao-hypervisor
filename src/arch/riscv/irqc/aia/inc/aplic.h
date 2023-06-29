@@ -123,8 +123,7 @@ struct irqc_hart_hw {
 
 extern uint32_t impl_src[APLIC_MAX_INTERRUPTS];
 
-extern volatile struct irqc_global_hw *irqc_global;
-extern volatile struct irqc_hart_hw *irqc_hart;
+extern volatile struct irqc_hart_hw *aplic_hart;
 
 /**
  * @brief Check if the phys APLIC is in MSI mode
