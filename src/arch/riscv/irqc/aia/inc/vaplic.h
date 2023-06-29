@@ -17,7 +17,7 @@
  *          is the platform interrupt controller.
  * 
  */
-struct virqc {
+struct vaplic {
     spinlock_t lock;
     size_t idc_num;
     BITMAP_ALLOC(hw, APLIC_MAX_INTERRUPTS);
