@@ -6,7 +6,7 @@
 #include <cpu.h>
 #include <vplic.h>
 
-#define XPLIC_MAX_INTERRUPTS (1024)
+#define IRQC_MAX_INTERRUPTS (1024)
 
 #define HART_REG_OFF PLIC_CLAIMCMPLT_OFF
 #define IRQC_HART_INST PLIC_PLAT_CNTXT_NUM
