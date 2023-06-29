@@ -43,8 +43,19 @@
 #define REG_T6 (31)
 
 struct arch_vm_platform {
-    paddr_t plic_base;
-    paddr_t imsic_base;
+    union {
+        struct {
+            paddr_t base;
+        } plic;
+        struct {
+            struct {
+                paddr_t base;
+            } aplic;
+            struct {
+                paddr_t base;
+            } imsic;
+        } aia;
+    } irqc;
 };
 
 struct vm_arch {

@@ -66,7 +66,7 @@ void imsic_init(void){
     */
     imsic[cpu()->id] = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, 
                     INVALID_VA, 
-                    platform.arch.imsic_base+(cpu()->id*PAGE_SIZE*IMSIC_NUM_FILES), 
+                    platform.arch.irqc.aia.imsic.base+(cpu()->id*PAGE_SIZE*IMSIC_NUM_FILES), 
                     NUM_PAGES(sizeof(struct imsic_global_hw)));
 }
 

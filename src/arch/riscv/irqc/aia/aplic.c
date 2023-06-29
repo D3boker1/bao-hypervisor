@@ -67,10 +67,10 @@ void aplic_init(void)
 {
     /** Maps APLIC device */
     aplic_global = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-            platform.arch.plic_base, NUM_PAGES(sizeof(struct aplic_global_hw)));
+            platform.arch.irqc.aia.aplic.base, NUM_PAGES(sizeof(struct aplic_global_hw)));
         
     aplic_hart = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-        platform.arch.plic_base + HART_REG_OFF,
+        platform.arch.irqc.aia.aplic.base + HART_REG_OFF,
         NUM_PAGES(sizeof(struct aplic_hart_hw)*IRQC_HART_INST));
     
     /** Ensure that instructions after fence have the PLIC fully mapped */
