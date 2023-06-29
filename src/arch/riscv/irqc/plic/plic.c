@@ -10,9 +10,9 @@
 
 size_t PLIC_IMPL_INTERRUPTS;
 
-volatile struct irqc_global_hw *plic_global;
+volatile struct plic_global_hw *plic_global;
 
-volatile struct irqc_hart_hw *plic_hart;
+volatile struct plic_hart_hw *plic_hart;
 
 static size_t plic_scan_max_int()
 {
@@ -32,11 +32,11 @@ void plic_init()
 {
     /** Maps APLIC device */
     plic_global = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-            platform.arch.plic_base, NUM_PAGES(sizeof(struct irqc_global_hw)));
+            platform.arch.plic_base, NUM_PAGES(sizeof(struct plic_global_hw)));
         
     plic_hart = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
         platform.arch.plic_base + HART_REG_OFF,
-        NUM_PAGES(sizeof(struct irqc_hart_hw)*IRQC_HART_INST));
+        NUM_PAGES(sizeof(struct plic_hart_hw)*IRQC_HART_INST));
     
     /** Ensure that instructions after fence have the PLIC fully mapped */
     fence_sync();

@@ -1047,7 +1047,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
     if (cpu()->id == vm->master) {
         vm->arch.virqc.aplic_domain_emul = (struct emul_mem) {
             .va_base = arch_platform->plic_base,
-            .size = sizeof(struct irqc_global_hw),
+            .size = sizeof(struct aplic_global_hw),
             .handler = vaplic_domain_emul_handler
         };
 
@@ -1062,7 +1062,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
         {
             vm->arch.virqc.aplic_idc_emul = (struct emul_mem) {
             .va_base = arch_platform->plic_base + APLIC_IDC_OFF,
-            .size = sizeof(struct irqc_hart_hw)*APLIC_PLAT_IDC_NUM,
+            .size = sizeof(struct aplic_hart_hw)*APLIC_PLAT_IDC_NUM,
             .handler = vaplic_idc_emul_handler
             };
 

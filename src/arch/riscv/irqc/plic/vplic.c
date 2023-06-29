@@ -327,14 +327,14 @@ static bool vplic_hart_emul_handler(struct emul_access *acc)
     }
 
     switch (acc->addr & 0xf) {
-        case offsetof(struct irqc_hart_hw, threshold):
+        case offsetof(struct plic_hart_hw, threshold):
             if (acc->write) {
                 vplic_set_threshold(cpu()->vcpu, vcntxt, vcpu_readreg(cpu()->vcpu, acc->reg));
             } else {
                 vcpu_writereg(cpu()->vcpu, acc->reg, vplic_get_theshold(cpu()->vcpu, vcntxt));
             }
             break;
-        case offsetof(struct irqc_hart_hw, claim):
+        case offsetof(struct plic_hart_hw, claim):
             if (acc->write) {
                 vplic_complete(cpu()->vcpu, vcntxt, vcpu_readreg(cpu()->vcpu, acc->reg));
             } else {
@@ -351,7 +351,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
     if (cpu()->id == vm->master) {
         vm->arch.virqc.plic_global_emul = (struct emul_mem) {
             .va_base = arch_platform->plic_base,
-            .size = sizeof(struct irqc_global_hw),
+            .size = sizeof(struct plic_global_hw),
             .handler = vplic_global_emul_handler
         };
 
@@ -359,7 +359,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
 
         vm->arch.virqc.plic_claimcomplte_emul = (struct emul_mem) {
             .va_base = arch_platform->plic_base + PLIC_CLAIMCMPLT_OFF,
-            .size = sizeof(struct irqc_hart_hw) * vm->cpu_num * PLAT_PLIC_CNTXT_PER_HART,
+            .size = sizeof(struct plic_hart_hw) * vm->cpu_num * PLAT_PLIC_CNTXT_PER_HART,
             .handler = vplic_hart_emul_handler
         };
 

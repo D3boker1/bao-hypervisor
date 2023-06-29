@@ -26,8 +26,8 @@
 #define APLIC_SRCCFG_DEFAULT            APLIC_SRCCFG_DETACH    
 
 /** APLIC public data */
-volatile struct irqc_global_hw *aplic_global;
-volatile struct irqc_hart_hw *aplic_hart;
+volatile struct aplic_global_hw *aplic_global;
+volatile struct aplic_hart_hw *aplic_hart;
 
 /** APLIC private data */
 size_t APLIC_IMPL_INTERRUPTS;
@@ -67,11 +67,11 @@ void aplic_init(void)
 {
     /** Maps APLIC device */
     aplic_global = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-            platform.arch.plic_base, NUM_PAGES(sizeof(struct irqc_global_hw)));
+            platform.arch.plic_base, NUM_PAGES(sizeof(struct aplic_global_hw)));
         
     aplic_hart = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
         platform.arch.plic_base + HART_REG_OFF,
-        NUM_PAGES(sizeof(struct irqc_hart_hw)*IRQC_HART_INST));
+        NUM_PAGES(sizeof(struct aplic_hart_hw)*IRQC_HART_INST));
     
     /** Ensure that instructions after fence have the PLIC fully mapped */
     fence_sync();
