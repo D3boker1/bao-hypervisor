@@ -62,7 +62,7 @@ static inline bool irqc_get_pend(irqid_t int_id)
     }
 }
 
-static inline void irqc_set_clrienum(irqid_t int_id)
+static inline void irqc_clear_pend(irqid_t int_id)
 {
     aplic_set_clrienum(int_id);
 }
