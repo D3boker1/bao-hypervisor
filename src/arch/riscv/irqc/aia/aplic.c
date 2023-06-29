@@ -111,10 +111,7 @@ void aplic_set_sourcecfg(irqid_t int_id, uint32_t val)
 {
     uint32_t real_int_id = int_id - 1;
     if(impl_src[real_int_id] == IMPLEMENTED){
-        if(!(val & APLIC_SRCCFG_D) && 
-            ((val & (APLIC_SRCCFG_SM)) != 2) && ((val & (APLIC_SRCCFG_SM)) != 3)){
-                aplic_global->sourcecfg[real_int_id] = val & APLIC_SOURCECFG_SM_MASK;
-        }
+        aplic_global->sourcecfg[real_int_id] = val & APLIC_SOURCECFG_SM_MASK;
     }
 }
 
