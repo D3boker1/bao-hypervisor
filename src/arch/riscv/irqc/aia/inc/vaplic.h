@@ -45,7 +45,7 @@ struct vcpu;
  * @param vaplic_base address base of the physical APLIC
  * 
  */
-void vxplic_init(struct vm *vm, struct arch_platform *arch_platform);
+void virqc_init(struct vm *vm, struct arch_platform *arch_platform);
 
 /**
  * @brief Inject an interrupt into a vm.
