@@ -204,12 +204,12 @@ static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     struct virqc * virqc = &vcpu->vm->arch.virqc;
     spin_lock(&virqc->lock);
     /** Update only the virtual domaincfg */
-    /** Only Interrupt Enable is configurable. */
-    new_val &= APLIC_DOMAINCFG_IE;
+    /** Only Interrupt Enable and Delivery mode are configurable */
+    new_val &= (APLIC_DOMAINCFG_IE | APLIC_DOMAINCFG_DM);
     virqc->domaincfg = new_val | APLIC_DOMAINCFG_RO80;
     spin_unlock(&virqc->lock);
 
-    vaplic_update_hart_line(vcpu);
+    // vaplic_update_hart_line(vcpu);
 }
 
 /**
