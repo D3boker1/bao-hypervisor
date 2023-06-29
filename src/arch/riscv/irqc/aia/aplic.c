@@ -153,7 +153,7 @@ bool aplic_get_pend(irqid_t int_id)
     }
 }
 
-void aplic_set_clripnum(irqid_t int_id)
+void aplic_clr_pend(irqid_t int_id)
 {
     if (impl_src[int_id] == IMPLEMENTED)
     {

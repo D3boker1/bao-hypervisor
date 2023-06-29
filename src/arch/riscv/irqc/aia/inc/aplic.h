@@ -186,7 +186,7 @@ bool aplic_get_pend(irqid_t int_id);
  *  
  * @param int_id interrupt to clear the pending bit from
  */
-void aplic_set_clripnum(irqid_t intp_id);
+void aplic_clr_pend(irqid_t intp_id);
 
 /**
  * @brief Read the current rectified value for a given interrupt
