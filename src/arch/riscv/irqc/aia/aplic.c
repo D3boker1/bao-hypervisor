@@ -132,7 +132,6 @@ void aplic_set_clrienum(irqid_t int_id)
 void aplic_set_target(irqid_t int_id, uint32_t val)
 {
     uint32_t real_int_id = int_id - 1;
-    uint8_t priority = val & APLIC_TARGET_IPRIO_MASK;
     uint32_t eiid = val & APLIC_TARGET_EEID_MASK;
     uint32_t hart_index = (val >> APLIC_TARGET_HART_IDX_SHIFT);
     uint32_t guest_index = (val >> APLIC_TARGET_GUEST_IDX_SHIFT) 
@@ -142,10 +141,7 @@ void aplic_set_target(irqid_t int_id, uint32_t val)
     /** Direct Mode*/
     if(!aplic_msi_mode()){
         val &= APLIC_TARGET_DIRECT_MASK;
-        /** Checks priority and hart index range */
-        if((priority > 0) && (hart_index < APLIC_DOMAIN_NUM_HARTS)){
-            aplic_global->target[real_int_id] = val;
-        }
+        aplic_global->target[real_int_id] = val;
     }
     /** MSI Mode*/
     else{ 
