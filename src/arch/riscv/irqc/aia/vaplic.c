@@ -10,6 +10,7 @@
 #include <mem.h>
 #include <interrupts.h>
 #include <arch/csrs.h>
+#include <config.h>
 
 #define APLIC_MIN_PRIO 0xFF
 
@@ -961,14 +962,17 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
     // only allow aligned word accesses
     if (acc->width != 4 || acc->addr & 0x3) return false;
 
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
+    int idc_id = ((acc->addr - APLIC_IDC_OFF - 
+            cpu()->vcpu->vm->config->platform.arch.irqc.aia.aplic.base) >> 5) 
+            & APLIC_MAX_NUM_HARTS_MAKS;
     if(!(idc_id < cpu()->vcpu->vm->arch.vaplic.idc_num)){
         if(!acc->write) {
             vcpu_writereg(cpu()->vcpu, acc->reg, 0);
         }
         return true;
     }
-    uint32_t addr = acc->addr - platform.arch.irqc.aia.aplic.base + APLIC_IDC_OFF;
+    uint32_t addr = acc->addr - cpu()->vcpu->vm->config->platform.arch.irqc.aia.aplic.base 
+                    + APLIC_IDC_OFF;
     addr = addr - (sizeof(aplic_hart[0]) * idc_id);
     switch (addr & 0x1F) {
         case APLIC_IDC_IDELIVERY_OFF:

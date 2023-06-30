@@ -9,8 +9,8 @@
 #include <bao.h>
 #include <platform.h>
 
-#define APLIC_DOMAIN_NUM_HARTS (PLAT_CPU_NUM)
-
+#define APLIC_DOMAIN_NUM_HARTS          (PLAT_CPU_NUM)
+#define APLIC_MAX_NUM_HARTS_MAKS        (0x3fff)
 /** APLIC Specific types */
 typedef cpuid_t idcid_t;
 
