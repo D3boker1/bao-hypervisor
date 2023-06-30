@@ -757,7 +757,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num){
         ret = vaplic->topi_claimi[idc_id];
-        /** Sepurious intp*/
+        /** Spurious intp*/
         if (ret == 0){
             // Clear the virt iforce bit
             vaplic->iforce[idc_id] = 0;
