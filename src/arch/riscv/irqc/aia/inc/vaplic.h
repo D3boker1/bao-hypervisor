@@ -27,10 +27,10 @@ struct vaplic {
     uint32_t in_clrip[APLIC_MAX_INTERRUPTS/32];
     uint32_t setie[APLIC_MAX_INTERRUPTS/32];
     uint32_t target[APLIC_MAX_INTERRUPTS-1];
-    BITMAP_ALLOC(idelivery, APLIC_PLAT_IDC_NUM);
-    BITMAP_ALLOC(iforce, APLIC_PLAT_IDC_NUM);
-    uint32_t ithreshold[APLIC_PLAT_IDC_NUM];
-    uint32_t topi_claimi[APLIC_PLAT_IDC_NUM];
+    BITMAP_ALLOC(idelivery, APLIC_DOMAIN_NUM_HARTS);
+    BITMAP_ALLOC(iforce, APLIC_DOMAIN_NUM_HARTS);
+    uint32_t ithreshold[APLIC_DOMAIN_NUM_HARTS];
+    uint32_t topi_claimi[APLIC_DOMAIN_NUM_HARTS];
     struct emul_mem aplic_domain_emul;
     struct emul_mem aplic_idc_emul;
 };

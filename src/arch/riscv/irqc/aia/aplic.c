@@ -143,7 +143,7 @@ void aplic_set_target(irqid_t int_id, uint32_t val)
     if(!aplic_msi_mode()){
         val &= APLIC_TARGET_DIRECT_MASK;
         /** Checks priority and hart index range */
-        if((priority > 0) && (hart_index < APLIC_PLAT_IDC_NUM)){
+        if((priority > 0) && (hart_index < APLIC_DOMAIN_NUM_HARTS)){
             aplic_global->target[real_int_id] = val;
         }
     }
@@ -167,7 +167,7 @@ uint32_t aplic_get_target(irqid_t int_id)
 /** IDC functions */
 void aplic_idc_set_iforce(idcid_t idc_id, bool en)
 {
-    if(idc_id < APLIC_PLAT_IDC_NUM) {
+    if(idc_id < APLIC_DOMAIN_NUM_HARTS) {
         if (en){
             aplic_hart[idc_id].iforce = APLIC_ENABLE_IFORCE;
         }else{
@@ -179,7 +179,7 @@ void aplic_idc_set_iforce(idcid_t idc_id, bool en)
 uint32_t aplic_idc_get_claimi(idcid_t idc_id)
 {
     uint32_t ret = 0;
-    if(idc_id < APLIC_PLAT_IDC_NUM) {
+    if(idc_id < APLIC_DOMAIN_NUM_HARTS) {
         ret = aplic_hart[idc_id].claimi;
     }
     return ret;

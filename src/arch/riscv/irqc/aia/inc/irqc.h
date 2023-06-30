@@ -15,7 +15,7 @@
 #define IRQC_MAX_INTERRUPTS (1024)
 
 #define HART_REG_OFF APLIC_IDC_OFF
-#define IRQC_HART_INST APLIC_PLAT_IDC_NUM
+#define IRQC_HART_INST APLIC_DOMAIN_NUM_HARTS
 
 static inline void irqc_init()
 {

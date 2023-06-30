@@ -1060,7 +1060,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
         {
             vm->arch.vaplic.aplic_idc_emul = (struct emul_mem) {
             .va_base = arch_platform->irqc.aia.aplic.base + APLIC_IDC_OFF,
-            .size = sizeof(struct aplic_hart_hw)*APLIC_PLAT_IDC_NUM,
+            .size = sizeof(struct aplic_hart_hw)*APLIC_DOMAIN_NUM_HARTS,
             .handler = vaplic_idc_emul_handler
             };
 

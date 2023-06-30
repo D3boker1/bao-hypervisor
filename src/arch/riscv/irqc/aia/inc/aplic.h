@@ -9,7 +9,7 @@
 #include <bao.h>
 #include <platform.h>
 
-#define APLIC_PLAT_IDC_NUM (PLAT_CPU_NUM)
+#define APLIC_DOMAIN_NUM_HARTS (PLAT_CPU_NUM)
 
 /** APLIC Specific types */
 typedef cpuid_t idcid_t;
