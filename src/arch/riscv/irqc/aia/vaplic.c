@@ -95,7 +95,7 @@ static irqid_t vaplic_update_topi(struct vcpu* vcpu){
             if (prio < max_prio) {
                 max_prio = prio;
                 int_id = i;
-                hart_index = (target >> 18) & 0x3FFF;
+                hart_index = (target >> 18) & APLIC_MAX_NUM_HARTS_MAKS;
             }
         }
     }
