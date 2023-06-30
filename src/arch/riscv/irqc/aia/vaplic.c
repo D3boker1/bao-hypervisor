@@ -611,7 +611,7 @@ static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t ne
     spin_lock(&vaplic->lock);
     new_val = (new_val & 0x1);
     if (idc_id < vaplic->idc_num){
-        if (new_val) 
+        if (new_val != 0) 
             bitmap_set(vaplic->idelivery, idc_id);
         else
             bitmap_clear(vaplic->idelivery, idc_id);
@@ -647,7 +647,7 @@ static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_v
     spin_lock(&vaplic->lock);
     new_val = (new_val & 0x1);
     if (idc_id < vaplic->idc_num){
-        if (new_val) 
+        if (new_val != 0) 
             bitmap_set(vaplic->iforce, idc_id);
         else
             bitmap_clear(vaplic->iforce, idc_id);
