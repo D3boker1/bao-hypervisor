@@ -861,13 +861,15 @@ static void vaplic_emul_ithreshold_access(struct emul_access *acc, idcid_t idc_i
 }
 
 static void vaplic_emul_topi_access(struct emul_access *acc, idcid_t idc_id){
-    if (acc->write) return;
-    vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_topi(cpu()->vcpu, idc_id));
+    if (!acc->write){
+        vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_topi(cpu()->vcpu, idc_id));
+    }
 }
 
 static void vaplic_emul_claimi_access(struct emul_access *acc, idcid_t idc_id){
-    if (acc->write) return;
-    vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_claimi(cpu()->vcpu, idc_id));
+    if (!acc->write){
+        vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_claimi(cpu()->vcpu, idc_id));
+    } 
 }
 
 // ============================================================================
