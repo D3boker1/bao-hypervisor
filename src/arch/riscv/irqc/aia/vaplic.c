@@ -88,25 +88,28 @@ static irqid_t vaplic_update_topi(struct vcpu* vcpu){
     uint32_t prio = 0;
 
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
-        if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
-            uint32_t target = vaplic_get_target(vcpu, i); 
-            prio = target & 0xFF; 
-            
-            if (prio < max_prio) {
-                max_prio = prio;
-                int_id = i;
-                hart_index = (target >> 18) & APLIC_MAX_NUM_HARTS_MAKS;
-            }
+        uint32_t target = vaplic_get_target(vcpu, i); 
+        /** Check if the interrupt is targeting this vcpu*/
+        if (((target >> 18) & APLIC_MAX_NUM_HARTS_MAKS) == vcpu->id)
+        {
+            if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
+                prio = target & 0xFF; 
+                if (prio < max_prio) {
+                    max_prio = prio;
+                    int_id = i;
+                    hart_index = vcpu->id;
+                }
+            }   
         }
     }
 
-    /** Can interrupt be delivery? */
-    uint32_t domaincgfIE = (vaplic_get_domaincfg(vcpu) >> 8) & 0x1;
+    /** Can interrupt be delivered? */
+    bool domaincgfIE = !!((vaplic_get_domaincfg(vcpu) >> 8) & 0x1);
     uint32_t threshold = vaplic_get_ithreshold(vcpu, hart_index);
-    uint32_t delivery = vaplic_get_idelivery(vcpu, hart_index);
-    uint32_t force =  vaplic_get_iforce(vcpu, hart_index);
-    if ((max_prio < threshold || threshold == 0 || force == 1) && 
-         delivery == 1 && domaincgfIE == 1){
+    bool delivery = !!(vaplic_get_idelivery(vcpu, hart_index));
+    bool force =  !!(vaplic_get_iforce(vcpu, hart_index));
+    if ((max_prio < threshold || threshold == 0 || force) && 
+         delivery && domaincgfIE){
         vaplic->topi_claimi[hart_index] = (int_id << 16) | prio;
         return int_id;
     }
@@ -733,7 +736,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
         }
         // Clear the virt pending bit for te read intp
         vaplic->setip[(ret >> 16)/32] = bit32_clear(vaplic->setip[(ret >> 16)/32], (ret >> 16)%32);
-        
+
         vaplic_update_hart_line(vcpu);
     }
     return ret;
