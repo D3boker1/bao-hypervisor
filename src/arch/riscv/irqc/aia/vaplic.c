@@ -17,9 +17,9 @@
  * @brief Converts a virtual cpu id into the physical one
  * 
  * @param vcpu Virtual cpu to convert
- * @return int The physical cpu id; or INVALID_CPUID in case of error.
+ * @return cpuid_t The physical cpu id; or INVALID_CPUID in case of error.
  */
-static inline int vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu){
+static inline cpuid_t vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu){
     return vm_translate_to_pcpuid(vcpu->vm, vcpu->id);
 }
 
