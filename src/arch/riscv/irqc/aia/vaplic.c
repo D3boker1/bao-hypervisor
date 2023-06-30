@@ -872,7 +872,6 @@ static void vaplic_emul_claimi_access(struct emul_access *acc, idcid_t idc_id){
     } 
 }
 
-// ============================================================================
 void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
 {
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
