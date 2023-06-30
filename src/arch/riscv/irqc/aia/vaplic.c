@@ -959,7 +959,7 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
 static bool vaplic_idc_emul_handler(struct emul_access *acc)
 {
     // only allow aligned word accesses
-    if (acc->width > 4 || acc->addr & 0x3) return false;
+    if (acc->width != 4 || acc->addr & 0x3) return false;
 
     int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
     if(!(idc_id < cpu()->vcpu->vm->arch.vaplic.idc_num)){
