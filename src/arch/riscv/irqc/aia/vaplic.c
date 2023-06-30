@@ -900,7 +900,7 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
     // only allow aligned word accesses
     if (acc->width != 4 || acc->addr & 0x3) return false;
 
-    switch (acc->addr & 0xffff) {
+    switch (acc->addr & 0x3fff) {
         case APLIC_DOMAIN_OFF:
             vaplic_emul_domaincfg_access(acc);
             break;
