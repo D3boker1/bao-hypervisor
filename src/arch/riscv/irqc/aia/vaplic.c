@@ -583,10 +583,6 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     cpuid_t pcpu_id = 0;
     cpuid_t vcpu_id = 0;
     
-    if(intp_id == 0){
-        return ret;
-    }
-    
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS){
         /** Translate the physical cpu into the its virtual pair */
         pcpu_id = vaplic->target[intp_id -1] >> APLIC_TARGET_HART_IDX_SHIFT;
