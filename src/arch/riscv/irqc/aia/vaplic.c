@@ -72,14 +72,13 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
 }
 
 /**
- * @brief Emulates the notifier aplic module.
- *        (02/11/2022): computes the next pending bit.
- *        Only direct mode is supported. 
+ * @brief Updates the topi register based with the 
+ *        highest pend & en interrupt id
  * 
  * @param vcpu 
  * @return irqid_t 
  */
-static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
+static irqid_t vaplic_update_topi(struct vcpu* vcpu){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
 
     /** Find highest pending and enabled interrupt */
@@ -135,7 +134,7 @@ static void vaplic_update_hart_line(struct vcpu* vcpu)
     /** If the current cpu is the targeting cpu, signal the intp to the hart*/
     /** Else, send a mensage to the targeting cpu */
     if(pcpu_id == cpu()->id) {
-        int id = vaplic_emul_notifier(vcpu);
+        int id = vaplic_update_topi(vcpu);
         if(id != 0){
             CSRS(CSR_HVIP, HIP_VSEIP);
         } else  {
