@@ -3,8 +3,8 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef _APLIC_H_
-#define _APLIC_H_
+#ifndef APLIC_H
+#define APLIC_H
 
 #include <bao.h>
 #include <platform.h>

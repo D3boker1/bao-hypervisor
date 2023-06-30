@@ -3,8 +3,8 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef _IRQC_H_
-#define _IRQC_H_
+#ifndef IRQC_H
+#define IRQC_H
 
 #include <aplic.h>
 #include <imsic.h>

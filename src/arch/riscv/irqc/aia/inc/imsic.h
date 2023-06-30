@@ -1,5 +1,5 @@
-#ifndef _IMSIC_H_
-#define _IMSIC_H_
+#ifndef IMSIC_H
+#define IMSIC_H
 
 #include <bao.h>
 #include <platform.h>
