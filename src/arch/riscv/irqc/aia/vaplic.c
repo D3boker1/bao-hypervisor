@@ -760,11 +760,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
         /** Spurious intp*/
         if (ret == 0){
             // Clear the virt iforce bit
-            vaplic->iforce[idc_id] = 0;
-            if(vaplic_get_hw(vcpu,(ret >> 16))){
-                // Clear the physical iforce bit
-                aplic_idc_set_iforce(idc_id, 0);
-            }
+            bitmap_clear(vaplic->iforce, idc_id);
         }
         // Clear the virt pending bit for te read intp
         clr_bit_from_reg(&vaplic->setip[(ret >> 16)/32], (ret >> 16)%32);
