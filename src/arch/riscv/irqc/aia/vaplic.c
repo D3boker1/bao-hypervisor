@@ -56,7 +56,7 @@ static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (intp_id < APLIC_MAX_INTERRUPTS){
-        ret = bit32_get(vaplic->setip[intp_id/32], intp_id);
+        ret = bit32_get(vaplic->setip[intp_id/32], intp_id%32);
     }
     return ret;
 }
@@ -65,7 +65,7 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (intp_id < APLIC_MAX_INTERRUPTS){
-        ret = bit32_get(vaplic->setie[intp_id/32], intp_id);
+        ret = bit32_get(vaplic->setie[intp_id/32], intp_id%32);
     }
     return ret;
 }
@@ -315,7 +315,7 @@ static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
-        !bit32_get(vaplic->setip[new_val/32], new_val)) {
+        !bit32_get(vaplic->setip[new_val/32], new_val%32)) {
         vaplic->setip[new_val/32] = bit32_set(vaplic->setip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_pend(new_val);
@@ -379,7 +379,7 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
-        bit32_get(vaplic->setip[new_val/32], new_val)) {
+        bit32_get(vaplic->setip[new_val/32], new_val%32)) {
         vaplic->setip[new_val/32] = bit32_clear(vaplic->setip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_clr_pend(new_val);
@@ -445,7 +445,7 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
-        !bit32_get(vaplic->setie[new_val/32], new_val)) {
+        !bit32_get(vaplic->setie[new_val/32], new_val%32)) {
         vaplic->setie[new_val/32] = bit32_set(vaplic->setie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_ienum(new_val);
@@ -493,7 +493,7 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
-        bit32_get(vaplic->setie[new_val/32], new_val)) {
+        bit32_get(vaplic->setie[new_val/32], new_val%32)) {
         vaplic->setie[new_val/32] = bit32_clear(vaplic->setie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_clrienum(new_val);
@@ -886,7 +886,7 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
         if(vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE &&
            vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_DETACH){
-           vaplic->setip[intp_id/32] = bit32_set(vaplic->setip[intp_id/32], intp_id);
+           vaplic->setip[intp_id/32] = bit32_set(vaplic->setip[intp_id/32], intp_id%32);
         }
         vaplic_update_hart_line(vcpu);
     }
