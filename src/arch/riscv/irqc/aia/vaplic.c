@@ -733,10 +733,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
         }
         // Clear the virt pending bit for te read intp
         vaplic->setip[(ret >> 16)/32] = bit32_clear(vaplic->setip[(ret >> 16)/32], (ret >> 16)%32);
-        if(vaplic_get_hw(vcpu,(ret >> 16))){
-            // Clear the physical pending bit for te read intp
-            aplic_idc_get_claimi(idc_id);
-        }
+        
         vaplic_update_hart_line(vcpu);
     }
     return ret;
