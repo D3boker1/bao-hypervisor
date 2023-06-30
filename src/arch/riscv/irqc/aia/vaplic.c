@@ -936,15 +936,6 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
         case APLIC_CLRIENUM_OFF:
             vaplic_emul_clrienum_access(acc);
             break;
-        // case APLIC_SETIPNUM_LE_OFF:
-        //     vaplic_emul_setipnum_le_access(acc);
-        //     break;
-        // case APLIC_SETIPNUM_BE_OFF:
-        //     vaplic_emul_setipnum_be_access(acc);
-        //     break;
-        // case APLIC_GENMSI_OFF:
-        //     vaplic_emul_genmsi_access(acc);
-        //     break;
         case APLIC_TARGET_OFF ...APLIC_TARGET_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
             vaplic_emul_target_access(acc);
             break;
