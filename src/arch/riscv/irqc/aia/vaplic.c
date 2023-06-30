@@ -836,8 +836,7 @@ static void vaplic_emul_target_access(struct emul_access *acc){
     }
 }
 
-static void vaplic_emul_idelivery_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
+static void vaplic_emul_idelivery_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_idelivery(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -845,8 +844,7 @@ static void vaplic_emul_idelivery_access(struct emul_access *acc){
     }
 }
 
-static void vaplic_emul_iforce_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
+static void vaplic_emul_iforce_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_iforce(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -854,8 +852,7 @@ static void vaplic_emul_iforce_access(struct emul_access *acc){
     }
 }
 
-static void vaplic_emul_ithreshold_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
+static void vaplic_emul_ithreshold_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_ithreshold(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -863,16 +860,12 @@ static void vaplic_emul_ithreshold_access(struct emul_access *acc){
     }
 }
 
-static void vaplic_emul_topi_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
-
+static void vaplic_emul_topi_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) return;
     vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_topi(cpu()->vcpu, idc_id));
 }
 
-static void vaplic_emul_claimi_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
-
+static void vaplic_emul_claimi_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) return;
     vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_claimi(cpu()->vcpu, idc_id));
 }
@@ -962,7 +955,7 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
     // only allow aligned word accesses
     if (acc->width != 4 || acc->addr & 0x3) return false;
 
-    int idc_id = ((acc->addr - APLIC_IDC_OFF - 
+    idcid_t idc_id = ((acc->addr - APLIC_IDC_OFF - 
             cpu()->vcpu->vm->config->platform.arch.irqc.aia.aplic.base) >> 5) 
             & APLIC_MAX_NUM_HARTS_MAKS;
     if(!(idc_id < cpu()->vcpu->vm->arch.vaplic.idc_num)){
@@ -973,22 +966,22 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
     }
     uint32_t addr = acc->addr - cpu()->vcpu->vm->config->platform.arch.irqc.aia.aplic.base 
                     + APLIC_IDC_OFF;
-    addr = addr - (sizeof(aplic_hart[0]) * idc_id);
+    addr = addr - (sizeof(struct aplic_hart_hw) * idc_id);
     switch (addr & 0x1F) {
         case APLIC_IDC_IDELIVERY_OFF:
-            vaplic_emul_idelivery_access(acc);
+            vaplic_emul_idelivery_access(acc, idc_id);
             break;
         case APLIC_IDC_IFORCE_OFF:
-            vaplic_emul_iforce_access(acc);
+            vaplic_emul_iforce_access(acc, idc_id);
             break;
         case APLIC_IDC_ITHRESHOLD_OFF:
-            vaplic_emul_ithreshold_access(acc);
+            vaplic_emul_ithreshold_access(acc, idc_id);
             break;
         case APLIC_IDC_TOPI_OFF:
-            vaplic_emul_topi_access(acc);
+            vaplic_emul_topi_access(acc, idc_id);
             break;
         case APLIC_IDC_CLAIMI_OFF:
-            vaplic_emul_claimi_access(acc);
+            vaplic_emul_claimi_access(acc, idc_id);
             break;
         default:
             if(!acc->write) {
