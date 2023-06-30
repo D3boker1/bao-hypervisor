@@ -572,8 +572,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
             
             if(vaplic_get_hw(vcpu, intp_id)){
                 aplic_set_target(intp_id, new_val);
-                if(impl_src[intp_id] == IMPLEMENTED && 
-                aplic_get_target(intp_id) == new_val){
+                if(aplic_get_target(intp_id) == new_val){
                     vaplic->target[intp_id-1] = new_val;
                 }
             } else {
@@ -589,8 +588,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
 
         if(vaplic_get_hw(vcpu, intp_id)){
             aplic_set_target(intp_id, new_val);
-            if(impl_src[intp_id] == IMPLEMENTED && 
-            aplic_get_target(intp_id) == new_val){
+            if(aplic_get_target(intp_id) == new_val){
                 vaplic->target[intp_id-1] = new_val;
             }
         } else {

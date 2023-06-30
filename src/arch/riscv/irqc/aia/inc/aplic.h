@@ -120,8 +120,6 @@ struct aplic_hart_hw {
     uint32_t claimi;
 }__attribute__((__packed__, aligned(APLIC_IDC_SIZE))); // IDC structure CANNOT be page aligned.
 
-extern uint32_t impl_src[APLIC_MAX_INTERRUPTS];
-
 extern volatile struct aplic_hart_hw *aplic_hart;
 
 /**

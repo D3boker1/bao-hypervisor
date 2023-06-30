@@ -29,31 +29,6 @@
 volatile struct aplic_global_hw *aplic_global;
 volatile struct aplic_hart_hw *aplic_hart;
 
-/** APLIC private data */
-uint32_t impl_src[APLIC_MAX_INTERRUPTS];
-
-/** APLIC private functions */
-/**
- * @brief Populate impl_src array with 1's if source i is an active
- *        source in this domain
- * 
- * @return size_t total number of implemented interrupts
- */
-static size_t aplic_scan_impl_int(void)
-{
-    size_t count = APLIC_MAX_INTERRUPTS-1;
-    for (size_t i = 0; i < APLIC_MAX_INTERRUPTS-1; i++) {
-        aplic_global->sourcecfg[i] = APLIC_SOURCECFG_SM_DEFAULT;
-        impl_src[i] = IMPLEMENTED;
-        if (aplic_global->sourcecfg[i] == APLIC_SOURCECFG_SM_INACTIVE) {
-            impl_src[i] = NOT_IMPLEMENTED;
-            count -= 1;           
-        }
-        aplic_global->sourcecfg[i] = APLIC_SOURCECFG_SM_INACTIVE;
-    }
-    return count;
-}
-
 bool inline aplic_msi_mode(void)
 {
     return (aplic_global->domaincfg & APLIC_DOMAINCFG_DM) && APLIC_DOMAINCFG_DM;
@@ -87,13 +62,11 @@ void aplic_init(void)
 
     /** Sets the default value of hart index and prio for implemented sources*/
     for (size_t i = 0; i < APLIC_NUM_TARGET_REGS; i++){
-        if(impl_src[i] == IMPLEMENTED){
-            if (!aplic_msi_mode())
-            {
-                aplic_global->target[i] = APLIC_TARGET_PRIO_DEFAULT;
-            } else {
-                aplic_global->target[i] = i;
-            }
+        if (!aplic_msi_mode())
+        {
+            aplic_global->target[i] = APLIC_TARGET_PRIO_DEFAULT;
+        } else {
+            aplic_global->target[i] = i;
         }
     }
     aplic_global->domaincfg |= APLIC_DOMAINCFG_IE;
@@ -110,27 +83,20 @@ void aplic_idc_init(void){
 void aplic_set_sourcecfg(irqid_t int_id, uint32_t val)
 {
     uint32_t real_int_id = int_id - 1;
-    if(impl_src[real_int_id] == IMPLEMENTED){
-        aplic_global->sourcecfg[real_int_id] = val & APLIC_SOURCECFG_SM_MASK;
-    }
+    aplic_global->sourcecfg[real_int_id] = val & APLIC_SOURCECFG_SM_MASK;
 }
 
 uint32_t aplic_get_sourcecfg(irqid_t int_id)
 {
     uint32_t ret = 0;
     uint32_t real_int_id = int_id - 1;
-    if(impl_src[real_int_id] == IMPLEMENTED){
-        ret = aplic_global->sourcecfg[real_int_id];
-    }
+    ret = aplic_global->sourcecfg[real_int_id];
     return ret;
 }
 
 void aplic_set_pend(irqid_t int_id)
 {
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        aplic_global->setipnum = int_id;
-    }
+    aplic_global->setipnum = int_id;
 }
 
 bool aplic_get_pend(irqid_t int_id)
@@ -138,48 +104,29 @@ bool aplic_get_pend(irqid_t int_id)
     uint32_t reg_indx = int_id / 32;
     uint32_t intp_to_pend_mask = (1U << (int_id % 32));
 
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        return aplic_global->setip[reg_indx] & intp_to_pend_mask;
-    } else {
-        return false;
-    }
+    return (aplic_global->setip[reg_indx] & intp_to_pend_mask) != 0;
 }
 
 void aplic_clr_pend(irqid_t int_id)
 {
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        aplic_global->clripnum = int_id;
-    }
+    aplic_global->clripnum = int_id;
 }
 
 bool aplic_get_inclrip(irqid_t int_id)
 {
     uint32_t reg_indx = int_id / 32;
     uint32_t intp_to_pend_mask = (1U << (int_id % 32));
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        return aplic_global->in_clrip[reg_indx] & intp_to_pend_mask;
-    } else {
-        return false;
-    }
+    return (aplic_global->in_clrip[reg_indx] & intp_to_pend_mask) != 0;
 }
 
 void aplic_set_ienum(irqid_t int_id)
 {
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        aplic_global->setienum = int_id;
-    }
+    aplic_global->setienum = int_id;
 }
 
 void aplic_set_clrienum(irqid_t int_id)
 {
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        aplic_global->clrienum = int_id;
-    }
+    aplic_global->clrienum = int_id;
 }
 
 void aplic_set_target(irqid_t int_id, uint32_t val)
@@ -191,22 +138,20 @@ void aplic_set_target(irqid_t int_id, uint32_t val)
     uint32_t guest_index = (val >> APLIC_TARGET_GUEST_IDX_SHIFT) 
                             & APLIC_TARGET_GUEST_INDEX_MASK;
     
-    if(impl_src[real_int_id] == IMPLEMENTED){
-        /** Evaluate in what delivery mode the domain is configured*/
-        /** Direct Mode*/
-        if(!aplic_msi_mode()){
-            val &= APLIC_TARGET_DIRECT_MASK;
-            /** Checks priority and hart index range */
-            if((priority > 0) && (hart_index < APLIC_PLAT_IDC_NUM)){
-                aplic_global->target[real_int_id] = val;
-            }
+    /** Evaluate in what delivery mode the domain is configured*/
+    /** Direct Mode*/
+    if(!aplic_msi_mode()){
+        val &= APLIC_TARGET_DIRECT_MASK;
+        /** Checks priority and hart index range */
+        if((priority > 0) && (hart_index < APLIC_PLAT_IDC_NUM)){
+            aplic_global->target[real_int_id] = val;
         }
-        /** MSI Mode*/
-        else{ 
-            val &= APLIC_TARGET_MSI_MASK;
-            if((eiid > 0) && (hart_index < PLAT_CPU_NUM) && (guest_index <= 1)){
-                aplic_global->target[real_int_id] = val;
-            }
+    }
+    /** MSI Mode*/
+    else{ 
+        val &= APLIC_TARGET_MSI_MASK;
+        if((eiid > 0) && (hart_index < PLAT_CPU_NUM) && (guest_index <= 1)){
+            aplic_global->target[real_int_id] = val;
         }
     }
 }
@@ -215,9 +160,7 @@ uint32_t aplic_get_target(irqid_t int_id)
 {
     uint32_t real_int_id = int_id - 1;
     uint32_t ret = 0;
-    if(impl_src[real_int_id] == IMPLEMENTED){
-        ret = aplic_global->target[real_int_id];
-    }
+    ret = aplic_global->target[real_int_id];
     return ret;
 }
 
