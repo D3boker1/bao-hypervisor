@@ -10,7 +10,7 @@
 #include <platform.h>
 
 #define APLIC_DOMAIN_NUM_HARTS          (PLAT_CPU_NUM)
-#define APLIC_MAX_NUM_HARTS_MAKS        (0x3fff)
+#define APLIC_MAX_NUM_HARTS_MAKS        (0x3FFF)
 /** APLIC Specific types */
 typedef cpuid_t idcid_t;
 
@@ -76,7 +76,7 @@ typedef cpuid_t idcid_t;
 
 #define APLIC_TARGET_HART_IDX_SHIFT     (18)
 #define APLIC_TARGET_GUEST_IDX_SHIFT    (12)
-#define APLIC_TARGET_HART_IDX_MASK      (0x3FFF)
+#define APLIC_TARGET_HART_IDX_MASK      (APLIC_MAX_NUM_HARTS_MAKS)
 #define APLIC_TARGET_IPRIO_MASK         (0xFF)
 #define APLIC_TARGET_EEID_MASK          (0x7FF)
 #define APLIC_TARGET_GUEST_INDEX_MASK   (0x3F)

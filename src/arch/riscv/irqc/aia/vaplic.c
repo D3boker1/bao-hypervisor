@@ -513,6 +513,8 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
  * @param vcpu 
  * @param intp_id interrupt id to write to
  * @param new_val value to write to target
+ * 
+ * TODO: Should we write the pcpuid of the cpu that does the MMIO access?
  */
 static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -529,30 +531,22 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
     }
     
     if(!aplic_msi_mode()){
-        /** Write the physical CPU in hart index */
+        /** If prio is 0, set to 1 (max)*/
         new_val &= APLIC_TARGET_IPRIO_MASK;
+        if (new_val == 0) {
+            new_val = APLIC_TARGET_PRIO_DEFAULT;
+        }
+        /** Write the target CPU in hart index */
         new_val |= (pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
 
-        if (intp_id > 0  && intp_id < APLIC_MAX_INTERRUPTS && 
+        if ((intp_id != 0) (intp_id < APLIC_MAX_INTERRUPTS) && 
             vaplic_get_target(vcpu, intp_id) != new_val) {
-
-            new_val &= APLIC_TARGET_DIRECT_MASK;
-            /** If prio is 0, set to 1 (max)*/
-            if ((new_val & APLIC_TARGET_IPRIO_MASK) == 0){
-                new_val |= APLIC_TARGET_PRIO_DEFAULT;
-            }
-            
+            vaplic->target[intp_id-1] = new_val;
             if(vaplic_get_hw(vcpu, intp_id)){
                 aplic_set_target(intp_id, new_val);
-                if(aplic_get_target(intp_id) == new_val){
-                    vaplic->target[intp_id-1] = new_val;
-                }
-            } else {
-                vaplic->target[intp_id-1] = new_val;
             }
             vaplic_update_hart_line(vcpu);
         }
-
     } else {
         new_val &= APLIC_TARGET_EEID_MASK;
         new_val |= (1ULL<<APLIC_TARGET_GUEST_IDX_SHIFT);
@@ -583,7 +577,7 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     cpuid_t pcpu_id = 0;
     cpuid_t vcpu_id = 0;
     
-    if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS){
+    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
         /** Translate the physical cpu into the its virtual pair */
         pcpu_id = vaplic->target[intp_id -1] >> APLIC_TARGET_HART_IDX_SHIFT;
         vcpu_id = vm_translate_to_vcpuid(vcpu->vm, pcpu_id);
