@@ -254,10 +254,12 @@ static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t real_int_id = intp_id - 1;
     uint32_t ret = 0;
 
-    if(intp_id == 0)
-        return ret;
-    struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    if (real_int_id < APLIC_MAX_INTERRUPTS) ret = vaplic->srccfg[real_int_id];
+    if(intp_id != 0){
+        struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+        if (real_int_id < APLIC_MAX_INTERRUPTS){
+            ret = vaplic->srccfg[real_int_id];
+        } 
+    }
     return ret;
 }
 
