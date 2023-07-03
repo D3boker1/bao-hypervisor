@@ -14,14 +14,21 @@
 
 #define APLIC_MIN_PRIO 0xFF
 #define MASK_INTP_ZERO (0xFFFFFFFE)
+#define UPDATE_ALL_HARTS (-1)
+
+#define GET_HART_INDEX(vcpu, intp_id) ((vaplic_get_target(vcpu, intp_id) >> \
+                                        APLIC_TARGET_HART_IDX_SHIFT) & \
+                                        APLIC_TARGET_HART_IDX_MASK)
+
+
 /**
  * @brief Converts a virtual cpu id into the physical one
  * 
  * @param vcpu Virtual cpu to convert
  * @return cpuid_t The physical cpu id; or INVALID_CPUID in case of error.
  */
-static inline cpuid_t vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu){
-    return vm_translate_to_pcpuid(vcpu->vm, vcpu->id);
+static inline cpuid_t vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu, vcpuid_t vhart){
+    return vm_translate_to_pcpuid(vcpu->vm, vhart);
 }
 
 static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu);
@@ -101,15 +108,12 @@ static irqid_t vaplic_update_topi(struct vcpu* vcpu){
     irqid_t int_id = 0;
     uint32_t hart_index = 0;
     uint32_t prio = 0;
-    uint32_t target = 0;
 
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
-        target = vaplic_get_target(vcpu, i); 
         /** Check if the interrupt is targeting this vcpu*/
-        if (((target >> 18) & APLIC_MAX_NUM_HARTS_MAKS) == vcpu->id)
-        {
+        if (GET_HART_INDEX(vcpu, i) == vcpu->id) {
             if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
-                prio = target & 0xFF; 
+                prio = vaplic_get_target(vcpu, i) & 0xFF; 
                 if (prio < max_prio) {
                     max_prio = prio;
                     int_id = i;
@@ -143,25 +147,51 @@ CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
  * 
  * @param vcpu 
  */
-static void vaplic_update_hart_line(struct vcpu* vcpu) 
+static void vaplic_update_hart_line(struct vcpu* vcpu, int16_t vhart_index) 
 {
-    int pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu);
+    int pcpu_id = 0;
+    irqid_t intp_id = 0;
     
     if (aplic_msi_mode())
         return;
-    
-    /** If the current cpu is the targeting cpu, signal the intp to the hart*/
-    /** Else, send a mensage to the targeting cpu */
-    if(pcpu_id == cpu()->id) {
-        int id = vaplic_update_topi(vcpu);
-        if(id != 0){
-            CSRS(CSR_HVIP, HIP_VSEIP);
-        } else  {
-            CSRC(CSR_HVIP, HIP_VSEIP);
+
+    if (vhart_index == UPDATE_ALL_HARTS){
+        for(int i = 0; i < APLIC_DOMAIN_NUM_HARTS; i++){
+            i &= APLIC_MAX_NUM_HARTS_MAKS;
+            pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, i);
+
+            /** 
+             *  If the current cpu is the targeting cpu, signal the intp 
+             *  to the hart
+             *  Else, send a mensage to the targeting cpu 
+             */
+            if(pcpu_id == cpu()->id) {
+                intp_id = vaplic_update_topi(vcpu);
+                if(intp_id != 0){
+                    CSRS(CSR_HVIP, HIP_VSEIP);
+                } else  {
+                    CSRC(CSR_HVIP, HIP_VSEIP);
+                }
+            } else {
+                struct cpu_msg msg = {VPLIC_IPI_ID, UPDATE_HART_LINE, i};
+                cpu_send_msg(pcpu_id, &msg);       
+            }
         }
     } else {
-        struct cpu_msg msg = {VPLIC_IPI_ID, UPDATE_HART_LINE};
-        cpu_send_msg(pcpu_id, &msg);       
+        vhart_index &= APLIC_MAX_NUM_HARTS_MAKS;
+        pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, vhart_index);
+
+        if(pcpu_id == cpu()->id) {
+            intp_id = vaplic_update_topi(vcpu);
+            if(intp_id != 0){
+                CSRS(CSR_HVIP, HIP_VSEIP);
+            } else  {
+                CSRC(CSR_HVIP, HIP_VSEIP);
+            }
+        } else {
+            struct cpu_msg msg = {VPLIC_IPI_ID, UPDATE_HART_LINE, vhart_index};
+            cpu_send_msg(pcpu_id, &msg);       
+        }
     }
 }
 
@@ -175,7 +205,7 @@ static void vaplic_ipi_handler(uint32_t event, uint64_t data)
 {
     switch(event) {
         case UPDATE_HART_LINE:
-            vaplic_update_hart_line(cpu()->vcpu);
+            vaplic_update_hart_line(cpu()->vcpu, data);
             break;
     }
 }
@@ -197,7 +227,7 @@ static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     vaplic->domaincfg = new_val | APLIC_DOMAINCFG_RO80;
     spin_unlock(&vaplic->lock);
 
-    // vaplic_update_hart_line(vcpu);
+    vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
 }
 
 /**
@@ -271,7 +301,7 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
             /** If intp is not phys. update virtual only */
             vaplic->srccfg[intp_id-1] = new_val;
         }
-        vaplic_update_hart_line(vcpu);
+        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
 }
@@ -300,7 +330,7 @@ static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
 static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
-    if (reg == 0) new_val &= 0xFFFFFFFE;
+    if (reg == 0) new_val &= MASK_INTP_ZERO;
     if (reg < APLIC_NUM_SETIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
         vaplic->ip[reg] = 0;
@@ -317,7 +347,7 @@ static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
             } else {
                 /** If intp is not phys. emul aplic behaviour */
                 vaplic->ip[reg] |= new_val & (1 << i);
-                vaplic_update_hart_line(vcpu);
+                vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
             }
         }
     }
@@ -339,7 +369,7 @@ static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_pend(new_val);
         } else {
-            vaplic_update_hart_line(vcpu);
+            vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
         }
     }
     spin_unlock(&vaplic->lock);
@@ -357,7 +387,7 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
     spin_lock(&vaplic->lock);
     if (reg < APLIC_NUM_CLRIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
-        if (reg == 0) new_val &= 0xFFFFFFFE;
+        if (reg == 0) new_val &= MASK_INTP_ZERO;
         vaplic->ip[reg] &= ~new_val;
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
@@ -365,7 +395,7 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
                     aplic_clr_pend(i);
                 }
             } else {
-                vaplic_update_hart_line(vcpu);
+                vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
             }
         }
     }
@@ -403,7 +433,7 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_clr_pend(new_val);
         } else {
-            vaplic_update_hart_line(vcpu);
+            vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
         }
     }
     spin_unlock(&vaplic->lock);
@@ -447,7 +477,7 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
                 }
             } else {
                 /** If intp is not phys. emul aplic behaviour */
-                vaplic_update_hart_line(vcpu);
+                vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
             }
         }
     }
@@ -469,7 +499,7 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_ienum(new_val);
         } else {
-            vaplic_update_hart_line(vcpu);
+            vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
         }
     }
     spin_unlock(&vaplic->lock);
@@ -495,7 +525,7 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
                     aplic_set_clrienum(i);
                 }
             } else {
-                vaplic_update_hart_line(vcpu);
+                vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
             }
         }
     }
@@ -517,7 +547,7 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_clrienum(new_val);
         }
-        vaplic_update_hart_line(vcpu);
+        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
     }
     spin_unlock(&vaplic->lock);
 }
@@ -560,7 +590,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
             if(vaplic_get_hw(vcpu, intp_id)){
                 aplic_set_target(intp_id, new_val);
             }
-            vaplic_update_hart_line(vcpu);
+            vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
         }
     } else {
         new_val &= APLIC_TARGET_EEID_MASK;
@@ -623,7 +653,7 @@ static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t ne
     }
     spin_unlock(&vaplic->lock);
 
-    vaplic_update_hart_line(vcpu);
+    vaplic_update_hart_line(vcpu, idc_id);
 }
 
 /**
@@ -659,7 +689,7 @@ static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_v
     }
     spin_unlock(&vaplic->lock);
 
-    vaplic_update_hart_line(vcpu);
+    vaplic_update_hart_line(vcpu, idc_id);
 }
 
 /**
@@ -691,7 +721,7 @@ static void vaplic_set_ithreshold(struct vcpu *vcpu, uint16_t idc_id, uint32_t n
     }
     spin_unlock(&vaplic->lock);
 
-    vaplic_update_hart_line(vcpu);
+    vaplic_update_hart_line(vcpu, idc_id);
 }
 
 /**
@@ -742,7 +772,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
         // Clear the virt pending bit for te read intp
         vaplic->ip[(ret >> 16)/32] = bit32_clear(vaplic->ip[(ret >> 16)/32], (ret >> 16)%32);
 
-        vaplic_update_hart_line(vcpu);
+        vaplic_update_hart_line(vcpu, idc_id);
     }
     return ret;
 }
@@ -1013,7 +1043,7 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     spin_lock(&vaplic->lock);
     /** If the intp was successfully injected, update the heart line. */
     if (vaplic_set_pend(vcpu, intp_id)){
-        vaplic_update_hart_line(vcpu);
+        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
 }
