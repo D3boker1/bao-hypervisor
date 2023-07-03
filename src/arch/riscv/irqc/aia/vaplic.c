@@ -57,7 +57,7 @@ static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (intp_id < APLIC_MAX_INTERRUPTS){
-        ret = bit32_get(vaplic->setip[intp_id/32], intp_id%32);
+        ret = bit32_get(vaplic->ip[intp_id/32], intp_id%32);
     }
     return ret;
 }
@@ -66,7 +66,7 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (intp_id < APLIC_MAX_INTERRUPTS){
-        ret = bit32_get(vaplic->setie[intp_id/32], intp_id%32);
+        ret = bit32_get(vaplic->ie[intp_id/32], intp_id%32);
     }
     return ret;
 }
@@ -270,7 +270,7 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
 static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    if (reg < APLIC_NUM_SETIx_REGS) ret = vaplic->setip[reg];
+    if (reg < APLIC_NUM_SETIx_REGS) ret = vaplic->ip[reg];
     return ret;
 }
 
@@ -287,20 +287,20 @@ static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     if (reg == 0) new_val &= 0xFFFFFFFE;
     if (reg < APLIC_NUM_SETIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
-        vaplic->setip[reg] = 0;
+        vaplic->ip[reg] = 0;
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_SETIx_REGS; i++){
             /** Is this intp a phys. intp? */
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
-                if(bit32_get(vaplic->setip[reg], i) && ((new_val >> i) & 1)){
+                if(bit32_get(vaplic->ip[reg], i) && ((new_val >> i) & 1)){
                     aplic_set_pend(i);
                     if(aplic_get_pend(i)){
-                        vaplic->setip[reg] |= new_val & (1 << i);
+                        vaplic->ip[reg] |= new_val & (1 << i);
                     }
                 }
             } else {
                 /** If intp is not phys. emul aplic behaviour */
-                vaplic->setip[reg] |= new_val & (1 << i);
+                vaplic->ip[reg] |= new_val & (1 << i);
                 vaplic_update_hart_line(vcpu);
             }
         }
@@ -318,8 +318,8 @@ static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
-        !bit32_get(vaplic->setip[new_val/32], new_val%32)) {
-        vaplic->setip[new_val/32] = bit32_set(vaplic->setip[new_val/32], new_val%32);
+        !bit32_get(vaplic->ip[new_val/32], new_val%32)) {
+        vaplic->ip[new_val/32] = bit32_set(vaplic->ip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_pend(new_val);
         } else {
@@ -342,10 +342,10 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
     if (reg < APLIC_NUM_CLRIx_REGS && 
         vaplic_get_setip(vcpu, reg) != new_val) {
         if (reg == 0) new_val &= 0xFFFFFFFE;
-        vaplic->setip[reg] &= ~new_val;
+        vaplic->ip[reg] &= ~new_val;
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
-                if(!bit32_get(vaplic->setip[reg], i) && ((new_val >> i) & 1)){
+                if(!bit32_get(vaplic->ip[reg], i) && ((new_val >> i) & 1)){
                     aplic_clr_pend(i);
                 }
             } else {
@@ -382,8 +382,8 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
-        bit32_get(vaplic->setip[new_val/32], new_val%32)) {
-        vaplic->setip[new_val/32] = bit32_clear(vaplic->setip[new_val/32], new_val%32);
+        bit32_get(vaplic->ip[new_val/32], new_val%32)) {
+        vaplic->ip[new_val/32] = bit32_clear(vaplic->ip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_clr_pend(new_val);
         } else {
@@ -403,7 +403,7 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
 static uint32_t vaplic_get_setie(struct vcpu *vcpu, uint32_t reg){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    if (reg < APLIC_NUM_SETIx_REGS) ret = vaplic->setie[reg];
+    if (reg < APLIC_NUM_SETIx_REGS) ret = vaplic->ie[reg];
     return ret;
 }
 
@@ -421,12 +421,12 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
         vaplic_get_setie(vcpu, reg) != new_val) {
         /** Update virt setip array */
         if (reg == 0) new_val &= 0xFFFFFFFE;
-        vaplic->setie[reg] = new_val;
+        vaplic->ie[reg] = new_val;
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_SETIx_REGS; i++){
             /** Is this intp a phys. intp? */
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
-                if(bit32_get(vaplic->setie[reg], i) && ((new_val >> i) & 1)){
+                if(bit32_get(vaplic->ie[reg], i) && ((new_val >> i) & 1)){
                     aplic_set_ienum(i);
                 }
             } else {
@@ -448,8 +448,8 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
-        !bit32_get(vaplic->setie[new_val/32], new_val%32)) {
-        vaplic->setie[new_val/32] = bit32_set(vaplic->setie[new_val/32], new_val%32);
+        !bit32_get(vaplic->ie[new_val/32], new_val%32)) {
+        vaplic->ie[new_val/32] = bit32_set(vaplic->ie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_ienum(new_val);
         } else {
@@ -472,10 +472,10 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     if (reg < APLIC_NUM_CLRIx_REGS && 
         vaplic_get_setie(vcpu, reg) != new_val) {
         if (reg == 0) new_val &= 0xFFFFFFFE;
-        vaplic->setie[reg] &= ~new_val;
+        vaplic->ie[reg] &= ~new_val;
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
-                if(!bit32_get(vaplic->setie[reg], i) && ((new_val >> i) & 1)){
+                if(!bit32_get(vaplic->ie[reg], i) && ((new_val >> i) & 1)){
                     aplic_set_clrienum(i);
                 }
             } else {
@@ -496,8 +496,8 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (new_val != 0 && new_val < APLIC_MAX_INTERRUPTS && 
-        bit32_get(vaplic->setie[new_val/32], new_val%32)) {
-        vaplic->setie[new_val/32] = bit32_clear(vaplic->setie[new_val/32], new_val%32);
+        bit32_get(vaplic->ie[new_val/32], new_val%32)) {
+        vaplic->ie[new_val/32] = bit32_clear(vaplic->ie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_clrienum(new_val);
         } else {
@@ -725,7 +725,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
             bitmap_clear(vaplic->iforce, idc_id);
         }
         // Clear the virt pending bit for te read intp
-        vaplic->setip[(ret >> 16)/32] = bit32_clear(vaplic->setip[(ret >> 16)/32], (ret >> 16)%32);
+        vaplic->ip[(ret >> 16)/32] = bit32_clear(vaplic->ip[(ret >> 16)/32], (ret >> 16)%32);
 
         vaplic_update_hart_line(vcpu);
     }
@@ -1000,7 +1000,7 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
         if(vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE &&
            vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_DETACH){
-           vaplic->setip[intp_id/32] = bit32_set(vaplic->setip[intp_id/32], intp_id%32);
+           vaplic->ip[intp_id/32] = bit32_set(vaplic->ip[intp_id/32], intp_id%32);
         }
         vaplic_update_hart_line(vcpu);
     }
