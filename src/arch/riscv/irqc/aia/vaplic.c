@@ -830,7 +830,7 @@ static void vaplic_emul_srccfg_access(struct emul_access *acc){
  * for the choosen register.
  */
 static void vaplic_emul_setip_access(struct emul_access *acc){
-    int reg = (acc->addr & 0xFF)/32;
+    int reg = (acc->addr & 0xFF)/4;
     if (acc->write) {
         vaplic_set_setip(cpu()->vcpu, reg, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -861,7 +861,7 @@ static void vaplic_emul_setipnum_access(struct emul_access *acc){
  * for the choosen register.
  */
 static void vaplic_emul_in_clrip_access(struct emul_access *acc){
-    int reg = (acc->addr & 0xFF)/32;
+    int reg = (acc->addr & 0xFF)/4;
     if (acc->write) {
         vaplic_set_in_clrip(cpu()->vcpu, reg, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -892,7 +892,7 @@ static void vaplic_emul_clripnum_access(struct emul_access *acc){
  * for the choosen register.
  */
 static void vaplic_emul_setie_access(struct emul_access *acc){
-    int reg = (acc->addr & 0xFF)/32;
+    int reg = (acc->addr & 0xFF)/4;
     if (acc->write) {
         vaplic_set_setie(cpu()->vcpu, reg, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -923,7 +923,7 @@ static void vaplic_emul_setienum_access(struct emul_access *acc){
  * for the choosen register.
  */
 static void vaplic_emul_clrie_access(struct emul_access *acc){
-    int reg = (acc->addr & 0xFF)/32;
+    int reg = (acc->addr & 0xFF)/4;
     if (acc->write) {
         vaplic_set_clrie(cpu()->vcpu, reg, vcpu_readreg(cpu()->vcpu, acc->reg));
     }
