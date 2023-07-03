@@ -21,6 +21,7 @@ struct vaplic {
     spinlock_t lock;
     size_t idc_num;
     BITMAP_ALLOC(hw, APLIC_MAX_INTERRUPTS);
+    BITMAP_ALLOC(active, APLIC_MAX_INTERRUPTS);
     uint32_t domaincfg;
     uint32_t srccfg[APLIC_MAX_INTERRUPTS-1];
     uint32_t ip[APLIC_MAX_INTERRUPTS/32];
