@@ -539,7 +539,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
         /** Write the target CPU in hart index */
         new_val |= (pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
 
-        if ((intp_id != 0) (intp_id < APLIC_MAX_INTERRUPTS) && 
+        if ((intp_id != 0) && (intp_id < APLIC_MAX_INTERRUPTS) && 
             vaplic_get_target(vcpu, intp_id) != new_val) {
             vaplic->target[intp_id-1] = new_val;
             if(vaplic_get_hw(vcpu, intp_id)){
