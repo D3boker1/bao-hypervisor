@@ -515,9 +515,8 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
         vaplic->ie[new_val/32] = bit32_clear(vaplic->ie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_set_clrienum(new_val);
-        } else {
-            vaplic_update_hart_line(vcpu);
         }
+        vaplic_update_hart_line(vcpu);
     }
     spin_unlock(&vaplic->lock);
 }
