@@ -1007,6 +1007,23 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     spin_unlock(&vaplic->lock);
 }
 
+static bool vaplic_domain_emul_reserved (uint16_t addr) {
+    bool ret = false;
+    if ((addr < 0x1C00 && addr > 0x0FFC) ||
+        (addr < 0x1CDC && addr > 0x1C7C) || 
+        (addr < 0x1D00 && addr > 0x1CDC) ||
+        (addr < 0x1DDC && addr > 0x1D7C) ||
+        (addr < 0x1E00 && addr > 0x1DDC) ||
+        (addr < 0x1EDC && addr > 0x1E7C) ||
+        (addr < 0x1F00 && addr > 0x1EDC) ||
+        (addr < 0x1FDC && addr > 0x1F7C) ||
+        (addr < 0x2000 && addr > 0x1FDC) ||
+        (addr < 0x3000 && addr > 0x2004) ) {
+            ret = true;
+        }
+    return ret;
+}
+
 /**
  * @brief Function to handle writes (or reads) to (from) domain structure.
  * 
@@ -1016,42 +1033,69 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
  */
 static bool vaplic_domain_emul_handler(struct emul_access *acc)
 {
+    uint16_t emul_addr = 0;
+
     // only allow aligned word accesses
     if (acc->width != 4 || acc->addr & 0x3) return false;
 
-    switch (acc->addr & 0x3fff) {
-        case APLIC_DOMAIN_OFF:
-            vaplic_emul_domaincfg_access(acc);
+    emul_addr = acc->addr & 0x3fff;
+
+    if (vaplic_domain_emul_reserved(emul_addr)){
+        if(!acc->write) {
+            vcpu_writereg(cpu()->vcpu, acc->reg, 0);
+        }
+        return true;
+    }
+
+    switch (emul_addr >> 12)
+    {
+        case 0:
+            if (emul_addr == 0x0000) { /** domaincfg */
+                vaplic_emul_domaincfg_access(acc);
+            } else { /** sourcecfg */
+                vaplic_emul_srccfg_access(acc);
+            }
             break;
-        case APLIC_SOURCECFG_OFF ... APLIC_SOURCECFG_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
-            vaplic_emul_srccfg_access(acc);
+        case 1:
+            switch (emul_addr >> 7)
+            {
+            case 0x38: /** setip */
+                vaplic_emul_setip_access(acc);
+                break;
+            case 0x39: /** setipnum */
+                vaplic_emul_setipnum_access(acc);
+                break;
+            case 0x3A: /** in_clrip */
+                vaplic_emul_in_clrip_access(acc);
+                break;
+            case 0x3B: /** clripnum */
+                vaplic_emul_clripnum_access(acc);
+                break;
+            case 0x3C: /** setie */
+                vaplic_emul_setie_access(acc);
+                break;
+            case 0x3D: /** setienum */
+                vaplic_emul_setienum_access(acc);
+                break;
+            case 0x3E: /** clrie */
+                vaplic_emul_clrie_access(acc);
+                break;
+            case 0x3F: /** clrienum */
+                vaplic_emul_clrienum_access(acc);
+                break;
+            default:
+                if(!acc->write) {
+                    vcpu_writereg(cpu()->vcpu, acc->reg, 0);
+                }
+                break;
+            }
             break;
-        case APLIC_SETIP_OFF ... APLIC_SETIP_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
-            vaplic_emul_setip_access(acc);
-            break;
-        case APLIC_SETIPNUM_OFF:
-            vaplic_emul_setipnum_access(acc);
-            break;
-        case APLIC_IN_CLRIP_OFF ... APLIC_IN_CLRIP_OFF+((APLIC_NUM_CLRIx_REGS-1)*4):
-            vaplic_emul_in_clrip_access(acc);
-            break;
-        case APLIC_CLRIPNUM_OFF:
-            vaplic_emul_clripnum_access(acc);
-            break;
-        case APLIC_SETIE_OFF ... APLIC_SETIE_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
-            vaplic_emul_setie_access(acc);
-            break;
-        case APLIC_SETIENUM_OFF:
-            vaplic_emul_setienum_access(acc);
-            break;
-        case APLIC_CLRIE_OFF ... APLIC_CLRIE_OFF+((APLIC_NUM_CLRIx_REGS-1)*4):
-            vaplic_emul_clrie_access(acc);
-            break;
-        case APLIC_CLRIENUM_OFF:
-            vaplic_emul_clrienum_access(acc);
-            break;
-        case APLIC_TARGET_OFF ...APLIC_TARGET_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
-            vaplic_emul_target_access(acc);
+        case 3:
+            if (emul_addr == 0x3000) { /** genmsi */
+                vaplic_emul_domaincfg_access(acc);
+            } else { /** target */
+                vaplic_emul_target_access(acc);
+            }
             break;
         default:
             if(!acc->write) {
