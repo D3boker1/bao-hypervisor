@@ -997,9 +997,8 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     spin_lock(&vaplic->lock);
     
     /** Intp has a valid ID and the virtual interrupt is not pending*/
-    if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
-        if(vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE &&
-           vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_DETACH){
+    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
+        if(vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE){
            vaplic->ip[intp_id/32] = bit32_set(vaplic->ip[intp_id/32], intp_id%32);
         }
         vaplic_update_hart_line(vcpu);
