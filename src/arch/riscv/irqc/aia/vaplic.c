@@ -56,8 +56,23 @@ static bool vaplic_get_hw(struct vcpu* vcpu, irqid_t intp_id)
 static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    if (intp_id < APLIC_MAX_INTERRUPTS){
+    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
         ret = bit32_get(vaplic->ip[intp_id/32], intp_id%32);
+    }
+    return ret;
+}
+
+static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
+    struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+    bool ret = false;
+
+    /** Intp has a valid ID and the virtual interrupt is not pending*/
+    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS && 
+        !vaplic_get_pend(vcpu, intp_id)){
+        if(vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE){
+            vaplic->ip[intp_id/32] = bit32_set(vaplic->ip[intp_id/32], intp_id%32);
+            ret = true;
+        }
     }
     return ret;
 }
@@ -994,13 +1009,10 @@ static void vaplic_emul_claimi_access(struct emul_access *acc, idcid_t idc_id){
 void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
 {
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+
     spin_lock(&vaplic->lock);
-    
-    /** Intp has a valid ID and the virtual interrupt is not pending*/
-    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
-        if(vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE){
-           vaplic->ip[intp_id/32] = bit32_set(vaplic->ip[intp_id/32], intp_id%32);
-        }
+    /** If the intp was successfully injected, update the heart line. */
+    if (vaplic_set_pend(vcpu, intp_id)){
         vaplic_update_hart_line(vcpu);
     }
     spin_unlock(&vaplic->lock);
