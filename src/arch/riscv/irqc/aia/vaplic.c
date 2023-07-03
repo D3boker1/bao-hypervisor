@@ -13,7 +13,7 @@
 #include <config.h>
 
 #define APLIC_MIN_PRIO 0xFF
-
+#define MASK_INTP_ZERO (0xFFFFFFFE)
 /**
  * @brief Converts a virtual cpu id into the physical one
  * 
@@ -101,9 +101,10 @@ static irqid_t vaplic_update_topi(struct vcpu* vcpu){
     irqid_t int_id = 0;
     uint32_t hart_index = 0;
     uint32_t prio = 0;
+    uint32_t target = 0;
 
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
-        uint32_t target = vaplic_get_target(vcpu, i); 
+        target = vaplic_get_target(vcpu, i); 
         /** Check if the interrupt is targeting this vcpu*/
         if (((target >> 18) & APLIC_MAX_NUM_HARTS_MAKS) == vcpu->id)
         {
@@ -435,8 +436,8 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     if (reg < APLIC_NUM_SETIx_REGS && 
         vaplic_get_setie(vcpu, reg) != new_val) {
         /** Update virt setip array */
-        if (reg == 0) new_val &= 0xFFFFFFFE;
-        vaplic->ie[reg] = new_val;
+        if (reg == 0) new_val &= MASK_INTP_ZERO;
+        vaplic->ie[reg] |= new_val;
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_SETIx_REGS; i++){
             /** Is this intp a phys. intp? */
             if(vaplic_get_hw(vcpu,i)){
@@ -486,7 +487,7 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     spin_lock(&vaplic->lock);
     if (reg < APLIC_NUM_CLRIx_REGS && 
         vaplic_get_setie(vcpu, reg) != new_val) {
-        if (reg == 0) new_val &= 0xFFFFFFFE;
+        if (reg == 0) new_val &= MASK_INTP_ZERO;
         vaplic->ie[reg] &= ~new_val;
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
