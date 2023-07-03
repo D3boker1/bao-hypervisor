@@ -21,12 +21,12 @@ struct vaplic {
     spinlock_t lock;
     size_t idc_num;
     BITMAP_ALLOC(hw, APLIC_MAX_INTERRUPTS);
-    BITMAP_ALLOC(active, APLIC_MAX_INTERRUPTS);
     uint32_t domaincfg;
     uint32_t srccfg[APLIC_MAX_INTERRUPTS-1];
-    uint32_t ip[APLIC_MAX_INTERRUPTS/32];
+    BITMAP_ALLOC(active, APLIC_MAX_INTERRUPTS);
+    BITMAP_ALLOC(ip, APLIC_MAX_INTERRUPTS);
+    BITMAP_ALLOC(ie, APLIC_MAX_INTERRUPTS);
     uint32_t in_clrip[APLIC_MAX_INTERRUPTS/32];
-    uint32_t ie[APLIC_MAX_INTERRUPTS/32];
     uint32_t target[APLIC_MAX_INTERRUPTS-1];
     BITMAP_ALLOC(idelivery, APLIC_DOMAIN_NUM_HARTS);
     BITMAP_ALLOC(iforce, APLIC_DOMAIN_NUM_HARTS);

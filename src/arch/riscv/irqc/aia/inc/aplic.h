@@ -24,6 +24,7 @@ typedef cpuid_t idcid_t;
 /** where x = E or P*/
 #define APLIC_NUM_CLRIx_REGS            (APLIC_MAX_INTERRUPTS / 32)
 #define APLIC_NUM_SETIx_REGS            (APLIC_MAX_INTERRUPTS / 32)
+#define APLIC_NUM_INTP_PER_REG          (APLIC_MAX_INTERRUPTS / APLIC_NUM_SETIx_REGS)
 
 /** Source Mode defines */
 #define APLIC_SOURCECFG_SM_MASK         (0x00000007)
@@ -203,6 +204,7 @@ bool aplic_get_inclrip(irqid_t int_id);
  */
 void aplic_set_ienum(irqid_t int_id);
 
+bool aplic_get_en(irqid_t int_id);
 /**
  * @brief Clear enable bit be writting to clrie register of a given interrupt. 
  * It should be faster than aplic_set_clrie 
