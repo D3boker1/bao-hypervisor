@@ -296,13 +296,9 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
             /** Update in phys. aplic */
             aplic_set_sourcecfg(intp_id, new_val);
             /** If phys aplic was succe. written, then update virtual*/
-            if(aplic_get_sourcecfg(intp_id) == new_val){
-                vaplic->srccfg[intp_id-1] = new_val;
-            }
-        } else {
-            /** If intp is not phys. update virtual only */
-            vaplic->srccfg[intp_id-1] = new_val;
+            new_val = aplic_get_sourcecfg(intp_id); 
         }
+        vaplic->srccfg[intp_id-1] = new_val;
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
