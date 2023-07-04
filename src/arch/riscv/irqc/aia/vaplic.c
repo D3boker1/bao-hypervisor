@@ -1244,11 +1244,11 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
     return true;
 }
 
-void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
+void virqc_init(struct vm *vm, struct arch_vm_platform arch_platform)
 {
     if (cpu()->id == vm->master) {
         vm->arch.vaplic.aplic_domain_emul = (struct emul_mem) {
-            .va_base = arch_platform->irqc.aia.aplic.base,
+            .va_base = arch_platform.irqc.aia.aplic.base,
             .size = sizeof(struct aplic_global_hw),
             .handler = vaplic_domain_emul_handler
         };
@@ -1263,7 +1263,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
         if (!aplic_msi_mode())
         {
             vm->arch.vaplic.aplic_idc_emul = (struct emul_mem) {
-            .va_base = arch_platform->irqc.aia.aplic.base + APLIC_IDC_OFF,
+            .va_base = arch_platform.irqc.aia.aplic.base + APLIC_IDC_OFF,
             .size = sizeof(struct aplic_hart_hw)*APLIC_DOMAIN_NUM_HARTS,
             .handler = vaplic_idc_emul_handler
             };
