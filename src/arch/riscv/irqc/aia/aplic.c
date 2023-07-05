@@ -119,19 +119,19 @@ bool aplic_get_inclrip(irqid_t int_id)
     return (aplic_global->in_clrip[reg_indx] & intp_to_pend_mask) != 0;
 }
 
-void aplic_set_ienum(irqid_t int_id)
+void aplic_set_enbl(irqid_t int_id)
 {
     aplic_global->setienum = int_id;
 }
 
-bool aplic_get_en(irqid_t int_id){
+bool aplic_get_enbl(irqid_t int_id){
     uint32_t reg_indx = int_id / 32;
     uint32_t intp_to_pend_mask = (1U << (int_id % 32));
 
     return (aplic_global->setie[reg_indx] & intp_to_pend_mask) != 0;
 }
 
-void aplic_set_clrienum(irqid_t int_id)
+void aplic_clr_enbl(irqid_t int_id)
 {
     aplic_global->clrienum = int_id;
 }

@@ -33,7 +33,7 @@ static inline void irqc_cpu_init()
 
 static inline void irqc_set_enbl(irqid_t int_id, bool en)
 {
-    aplic_set_ienum(int_id);
+    aplic_set_enbl(int_id);
     if(aplic_msi_mode())
         imsic_set_enbl(int_id);
 }
@@ -69,7 +69,7 @@ static inline bool irqc_get_pend(irqid_t int_id)
 
 static inline void irqc_clear_pend(irqid_t int_id)
 {
-    aplic_set_clrienum(int_id);
+    aplic_clr_enbl(int_id);
 }
 
 static inline void irqc_send_ipi(cpuid_t target_cpu, irqid_t ipi_id)

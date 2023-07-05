@@ -91,7 +91,7 @@ static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
-static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
+static bool vaplic_get_enblbl(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
@@ -122,7 +122,7 @@ static bool vaplic_update_topi(struct vcpu* vcpu){
     /** Find highest pending and enabled interrupt */
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
         if (GET_HART_INDEX(vcpu, i) == vcpu->id) {
-            if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
+            if (vaplic_get_pend(vcpu, i) && vaplic_get_enblbl(vcpu, i)) {
                 prio = vaplic_get_target(vcpu, i) & APLIC_TARGET_IPRIO_MASK; 
                 if (prio < intp_prio) {
                     intp_prio = prio;
@@ -490,8 +490,8 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
             i < (reg*APLIC_NUM_INTP_PER_REG) + APLIC_NUM_INTP_PER_REG; i++){
             if (vaplic_get_active(vcpu, i)){
                 if(vaplic_get_hw(vcpu,i)){
-                    aplic_set_ienum(i);
-                    if(aplic_get_en(i)){
+                    aplic_set_enbl(i);
+                    if(aplic_get_enbl(i)){
                         bitmap_set(vaplic->ie, i);
                     }
                 } else {
@@ -515,10 +515,10 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
  
     spin_lock(&vaplic->lock);
     if (vaplic_get_active(vcpu, new_val) &&
-        !vaplic_get_enbl(vcpu, new_val)) {
+        !vaplic_get_enblbl(vcpu, new_val)) {
         if(vaplic_get_hw(vcpu, new_val)){
-            aplic_set_ienum(new_val);
-            if (aplic_get_en(new_val)){
+            aplic_set_enbl(new_val);
+            if (aplic_get_enbl(new_val)){
                 bitmap_set(vaplic->ie, new_val);
             }
         } else {
@@ -546,8 +546,8 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
             i < (reg*APLIC_NUM_INTP_PER_REG) + APLIC_NUM_INTP_PER_REG; i++){
             if (vaplic_get_active(vcpu, i)){
                 if(vaplic_get_hw(vcpu,i)){
-                    aplic_set_clrienum(i);
-                    if(!aplic_get_en(i)){
+                    aplic_clr_enbl(i);
+                    if(!aplic_get_enbl(i)){
                         bitmap_clear(vaplic->ie, i);
                     }
                 } else {
@@ -566,15 +566,15 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
  * @param vcpu virtual cpu
  * @param new_val value w/ the interrupt source number
  */
-static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
+static void vaplic_clr_enbl(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
 
     spin_lock(&vaplic->lock);
     if (vaplic_get_active(vcpu, new_val) &&
-        vaplic_get_enbl(vcpu, new_val)) {
+        vaplic_get_enblbl(vcpu, new_val)) {
         if(vaplic_get_hw(vcpu, new_val)){
-            aplic_set_clrienum(new_val);
-            if (!aplic_get_en(new_val)){
+            aplic_clr_enbl(new_val);
+            if (!aplic_get_enbl(new_val)){
                 bitmap_clear(vaplic->ie, new_val);
             }
         } else {
@@ -965,7 +965,7 @@ static void vaplic_emul_clrie_access(struct emul_access *acc){
  */
 static void vaplic_emul_clrienum_access(struct emul_access *acc){
     if (acc->write) {
-        vaplic_set_clrienum(cpu()->vcpu, vcpu_readreg(cpu()->vcpu, acc->reg));
+        vaplic_clr_enbl(cpu()->vcpu, vcpu_readreg(cpu()->vcpu, acc->reg));
     }
 }
 
