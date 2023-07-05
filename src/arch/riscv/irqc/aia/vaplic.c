@@ -107,7 +107,7 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
  * @param vcpu 
  * @return irqid_t 
  */
-static irqid_t vaplic_update_topi(struct vcpu* vcpu){
+static bool vaplic_update_topi(struct vcpu* vcpu){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     uint32_t intp_prio = APLIC_MIN_PRIO;
     irqid_t intp_id = APLIC_MAX_INTERRUPTS;
@@ -150,10 +150,11 @@ static irqid_t vaplic_update_topi(struct vcpu* vcpu){
             idc_enbl && domain_enbl){
             force_intp = false;
             vaplic->topi_claimi[intp_hart_index] = (intp_id << 16) | intp_prio;
-            // return true;
+            return true;
         }
-    } 
-    return intp_id;
+    }
+    vaplic->topi_claimi[intp_hart_index] = 0;
+    return false;
 }
 
 enum {UPDATE_HART_LINE};
@@ -162,7 +163,6 @@ CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
 
 static void vaplic_update_single_hart(struct vcpu* vcpu, vcpuid_t vhart_index){
     vcpuid_t pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, vhart_index);
-    irqid_t intp_id = 0;
 
     vhart_index &= APLIC_MAX_NUM_HARTS_MAKS;
 
@@ -172,8 +172,7 @@ static void vaplic_update_single_hart(struct vcpu* vcpu, vcpuid_t vhart_index){
      *  Else, send a mensage to the targeting cpu 
      */
     if(pcpu_id == cpu()->id) {
-        intp_id = vaplic_update_topi(vcpu);
-        if((intp_id != APLIC_MAX_INTERRUPTS)){
+        if(vaplic_update_topi(vcpu)){
             CSRS(CSR_HVIP, HIP_VSEIP);
         } else  {
             CSRC(CSR_HVIP, HIP_VSEIP);
@@ -809,14 +808,13 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
     spin_lock(&vaplic->lock);
     if (idc_id < vaplic->idc_num){
         ret = vaplic->topi_claimi[idc_id];
+        // Clear the virt pending bit for te read intp
+        bitmap_clear(vaplic->ip, (ret >> 16));
         /** Spurious intp*/
         if (ret == 0){
             // Clear the virt iforce bit
             bitmap_clear(vaplic->iforce, idc_id);
         }
-        // Clear the virt pending bit for te read intp
-        bitmap_clear(vaplic->ip, (ret >> 16));
-
         vaplic_update_hart_line(vcpu, idc_id);
     }
     spin_unlock(&vaplic->lock);
