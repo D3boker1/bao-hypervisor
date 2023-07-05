@@ -335,6 +335,7 @@ static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
             i < (reg*APLIC_NUM_INTP_PER_REG) + APLIC_NUM_INTP_PER_REG; i++){
                 ret |= (bitmap_get(vaplic->ip, i) << i%32);
         }
+        ret |= aplic_get32_pend(reg); 
     }
     return ret;
 }

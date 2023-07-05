@@ -179,6 +179,7 @@ void aplic_set_pend(irqid_t int_id);
  */
 bool aplic_get_pend(irqid_t int_id);
 
+uint32_t aplic_get32_pend(uint8_t reg_indx);
 /**
  * @brief Clear a pending bit from a inetrrupt writting to in_clripnum.
  * Should be faster than aplic_set_inclrip.

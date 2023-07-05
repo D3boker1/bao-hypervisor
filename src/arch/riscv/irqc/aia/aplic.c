@@ -107,6 +107,11 @@ bool aplic_get_pend(irqid_t int_id)
     return (aplic_global->setip[reg_indx] & intp_to_pend_mask) != 0;
 }
 
+uint32_t aplic_get32_pend(uint8_t reg_indx)
+{
+    return aplic_global->setip[reg_indx];
+}
+
 void aplic_clr_pend(irqid_t int_id)
 {
     aplic_global->clripnum = int_id;
