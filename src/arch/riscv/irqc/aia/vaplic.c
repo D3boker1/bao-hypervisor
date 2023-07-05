@@ -110,13 +110,14 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
 static irqid_t vaplic_update_topi(struct vcpu* vcpu){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     uint32_t intp_prio = APLIC_MIN_PRIO;
-    irqid_t intp_id = 0;
+    irqid_t intp_id = APLIC_MAX_INTERRUPTS;
     uint32_t intp_hart_index = 0;
     uint32_t prio = 0;
     uint32_t idc_threshold = 0;
     bool domain_enbl = false;
     bool idc_enbl = false;
     bool idc_force =  false;
+    bool force_intp = false;
 
     /** Find highest pending and enabled interrupt */
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
@@ -137,16 +138,21 @@ static irqid_t vaplic_update_topi(struct vcpu* vcpu){
     domain_enbl = !!(vaplic_get_domaincfg(vcpu) & APLIC_DOMAINCFG_IE);
     idc_enbl = !!(vaplic_get_idelivery(vcpu, intp_hart_index));
     idc_force = !!(vaplic_get_iforce(vcpu, intp_hart_index));
-    if ((intp_prio < idc_threshold || idc_threshold == 0 || idc_force) && 
-         idc_enbl && domain_enbl){
-        if(idc_force){
-            intp_id = 0;
-            intp_prio = 0;
-        }
-        vaplic->topi_claimi[intp_hart_index] = (intp_id << 16) | intp_prio;
-    } else {
+    
+    if(idc_force && (intp_id == APLIC_MAX_INTERRUPTS)){
         intp_id = 0;
+        intp_prio = 0;
+        force_intp = true;
     }
+    
+    if (intp_id != APLIC_MAX_INTERRUPTS) {
+        if ((intp_prio < idc_threshold || idc_threshold == 0 || force_intp) && 
+            idc_enbl && domain_enbl){
+            force_intp = false;
+            vaplic->topi_claimi[intp_hart_index] = (intp_id << 16) | intp_prio;
+            // return true;
+        }
+    } 
     return intp_id;
 }
 
@@ -167,7 +173,7 @@ static void vaplic_update_single_hart(struct vcpu* vcpu, vcpuid_t vhart_index){
      */
     if(pcpu_id == cpu()->id) {
         intp_id = vaplic_update_topi(vcpu);
-        if(intp_id != 0){
+        if((intp_id != APLIC_MAX_INTERRUPTS)){
             CSRS(CSR_HVIP, HIP_VSEIP);
         } else  {
             CSRC(CSR_HVIP, HIP_VSEIP);
