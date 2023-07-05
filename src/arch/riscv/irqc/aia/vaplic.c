@@ -79,7 +79,7 @@ static bool vaplic_get_active(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
-        ret = !!bitmap_get(vaplic->active, intp_id);
+        ret = !!BIT32_GET_INTP(vaplic->active, intp_id);
     }
     return ret;
 }
@@ -312,13 +312,13 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
         vaplic->srccfg[intp_id-1] = new_val;
 
         if (new_val == APLIC_SOURCECFG_SM_INACTIVE){
-            bitmap_clear(vaplic->active, intp_id);
+            BIT32_CLR_INTP(vaplic->active, intp_id);
             /** Zero pend, en and target registers if intp is now inactive */
             BIT32_CLR_INTP(vaplic->ip, intp_id);
             BIT32_CLR_INTP(vaplic->ie, intp_id);
             vaplic->target[intp_id-1] = 0;
         } else {
-            bitmap_set(vaplic->active, intp_id);
+            BIT32_SET_INTP(vaplic->active, intp_id);
         }
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
     }
