@@ -109,40 +109,45 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
  */
 static irqid_t vaplic_update_topi(struct vcpu* vcpu){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+    uint32_t intp_prio = APLIC_MIN_PRIO;
+    irqid_t intp_id = 0;
+    uint32_t intp_hart_index = 0;
+    uint32_t prio = 0;
+    uint32_t idc_threshold = 0;
+    bool domain_enbl = false;
+    bool idc_enbl = false;
+    bool idc_force =  false;
 
     /** Find highest pending and enabled interrupt */
-    uint32_t max_prio = APLIC_MIN_PRIO;
-    irqid_t int_id = 0;
-    uint32_t hart_index = 0;
-    uint32_t prio = 0;
-
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
-        /** Check if the interrupt is targeting this vcpu*/
         if (GET_HART_INDEX(vcpu, i) == vcpu->id) {
             if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
-                prio = vaplic_get_target(vcpu, i) & 0xFF; 
-                if (prio < max_prio) {
-                    max_prio = prio;
-                    int_id = i;
-                    hart_index = vcpu->id;
+                prio = vaplic_get_target(vcpu, i) & APLIC_TARGET_IPRIO_MASK; 
+                if (prio < intp_prio) {
+                    intp_prio = prio;
+                    intp_id = i;
+                    intp_hart_index = vcpu->id;
                 }
             }   
         }
     }
 
     /** Can interrupt be delivered? */
-    bool domaincgfIE = !!((vaplic_get_domaincfg(vcpu) >> 8) & 0x1);
-    uint32_t threshold = vaplic_get_ithreshold(vcpu, hart_index);
-    bool delivery = !!(vaplic_get_idelivery(vcpu, hart_index));
-    bool force =  !!(vaplic_get_iforce(vcpu, hart_index));
-    if ((max_prio < threshold || threshold == 0 || force) && 
-         delivery && domaincgfIE){
-        vaplic->topi_claimi[hart_index] = (int_id << 16) | prio;
+    idc_threshold = vaplic_get_ithreshold(vcpu, intp_hart_index);
+    domain_enbl = !!(vaplic_get_domaincfg(vcpu) & APLIC_DOMAINCFG_IE);
+    idc_enbl = !!(vaplic_get_idelivery(vcpu, intp_hart_index));
+    idc_force = !!(vaplic_get_iforce(vcpu, intp_hart_index));
+    if ((intp_prio < idc_threshold || idc_threshold == 0 || idc_force) && 
+         idc_enbl && domain_enbl){
+        if(idc_force){
+            intp_id = 0;
+            intp_prio = 0;
+        }
+        vaplic->topi_claimi[intp_hart_index] = (intp_id << 16) | intp_prio;
+    } else {
+        intp_id = 0;
     }
-    else{
-        int_id = 0;
-    }
-    return int_id;
+    return intp_id;
 }
 
 enum {UPDATE_HART_LINE};
