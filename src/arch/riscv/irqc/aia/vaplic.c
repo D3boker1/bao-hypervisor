@@ -97,7 +97,7 @@ static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
-static bool vaplic_get_enblbl(struct vcpu *vcpu, irqid_t intp_id){
+static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
@@ -128,7 +128,7 @@ static bool vaplic_update_topi(struct vcpu* vcpu){
     /** Find highest pending and enabled interrupt */
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
         if (GET_HART_INDEX(vcpu, i) == vcpu->id) {
-            if (vaplic_get_pend(vcpu, i) && vaplic_get_enblbl(vcpu, i)) {
+            if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
                 prio = vaplic_get_target(vcpu, i) & APLIC_TARGET_IPRIO_MASK; 
                 if (prio < intp_prio) {
                     intp_prio = prio;
@@ -522,7 +522,7 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
  
     spin_lock(&vaplic->lock);
     if (vaplic_get_active(vcpu, new_val) &&
-        !vaplic_get_enblbl(vcpu, new_val)) {
+        !vaplic_get_enbl(vcpu, new_val)) {
         if(vaplic_get_hw(vcpu, new_val)){
             aplic_set_enbl(new_val);
             if (aplic_get_enbl(new_val)){
@@ -578,7 +578,7 @@ static void vaplic_clr_enbl(struct vcpu *vcpu, uint32_t new_val){
 
     spin_lock(&vaplic->lock);
     if (vaplic_get_active(vcpu, new_val) &&
-        vaplic_get_enblbl(vcpu, new_val)) {
+        vaplic_get_enbl(vcpu, new_val)) {
         if(vaplic_get_hw(vcpu, new_val)){
             aplic_clr_enbl(new_val);
             if (!aplic_get_enbl(new_val)){
