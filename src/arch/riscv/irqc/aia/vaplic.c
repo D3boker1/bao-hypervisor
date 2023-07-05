@@ -232,9 +232,9 @@ static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     /** Only Interrupt Enable and Delivery mode are configurable */
     new_val &= (APLIC_DOMAINCFG_IE | APLIC_DOMAINCFG_DM);
     vaplic->domaincfg = new_val | APLIC_DOMAINCFG_RO80;
+    vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
     spin_unlock(&vaplic->lock);
 
-    vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
 }
 
 /**
@@ -633,7 +633,8 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
             } else {
                 vaplic->target[intp_id-1] = new_vaplic_target;
             }
-            vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
+            // vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
+            vaplic_update_hart_line(vcpu, vcpu->id);
         }
     } else {
         new_val &= APLIC_TARGET_EEID_MASK;
@@ -694,9 +695,8 @@ static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t ne
         else
             bitmap_clear(vaplic->idelivery, idc_id);
     }
-    spin_unlock(&vaplic->lock);
-
     vaplic_update_hart_line(vcpu, idc_id);
+    spin_unlock(&vaplic->lock);
 }
 
 /**
@@ -730,9 +730,8 @@ static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_v
         else
             bitmap_clear(vaplic->iforce, idc_id);
     }
-    spin_unlock(&vaplic->lock);
-
     vaplic_update_hart_line(vcpu, idc_id);
+    spin_unlock(&vaplic->lock);
 }
 
 /**
@@ -762,9 +761,8 @@ static void vaplic_set_ithreshold(struct vcpu *vcpu, uint16_t idc_id, uint32_t n
     if (idc_id < vaplic->idc_num){
         vaplic->ithreshold[idc_id] = new_val;
     }
-    spin_unlock(&vaplic->lock);
-
     vaplic_update_hart_line(vcpu, idc_id);
+    spin_unlock(&vaplic->lock);
 }
 
 /**
@@ -805,7 +803,7 @@ static uint32_t vaplic_get_topi(struct vcpu *vcpu, uint16_t idc_id){
 static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
     uint32_t ret = 0;
     struct vaplic* vaplic = &vcpu->vm->arch.vaplic;
-    
+    spin_lock(&vaplic->lock);
     if (idc_id < vaplic->idc_num){
         ret = vaplic->topi_claimi[idc_id];
         /** Spurious intp*/
@@ -818,6 +816,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
 
         vaplic_update_hart_line(vcpu, idc_id);
     }
+    spin_unlock(&vaplic->lock);
     return ret;
 }
 
