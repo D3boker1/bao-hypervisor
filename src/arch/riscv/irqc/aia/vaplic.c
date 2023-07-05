@@ -44,8 +44,9 @@ static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id);
 static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id);
 
 void vaplic_set_hw(struct vm *vm, irqid_t intp_id){
+    struct vaplic * vaplic = &vm->arch.vaplic;
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS) {
-        bitmap_set(vm->arch.vaplic.hw, intp_id);
+        BIT32_GET_INTP(vaplic.hw, intp_id);
     }
 }
 
@@ -61,7 +62,7 @@ static bool vaplic_get_hw(struct vcpu* vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
-        ret = !!bitmap_get(vaplic->hw, intp_id);
+        ret = !!BIT32_GET_INTP(vaplic->hw, intp_id);
     } 
     return ret;
 }
