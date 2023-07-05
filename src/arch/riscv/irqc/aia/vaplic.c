@@ -20,6 +20,12 @@
                                         APLIC_TARGET_HART_IDX_SHIFT) & \
                                         APLIC_TARGET_HART_IDX_MASK)
 
+#define BIT32_SET_INTP(reg, intp_id) (reg[intp_id/32] =\
+                                      bit32_set(reg[intp_id/32], intp_id%32))
+#define BIT32_GET_INTP(reg, intp_id) ((bit32_get(reg[intp_id/32], intp_id%32)\
+                                      != 0) ? 1U : 0U)
+#define BIT32_CLR_INTP(reg, intp_id) (reg[intp_id/32] =\
+                                      bit32_clear(reg[intp_id/32], intp_id%32))
 
 /**
  * @brief Converts a virtual cpu id into the physical one
@@ -64,7 +70,7 @@ static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
-        ret = !!bitmap_get(vaplic->ip, intp_id);
+        ret = !!BIT32_GET_INTP(vaplic->ip, intp_id);
     }
     return ret;
 }
@@ -85,7 +91,7 @@ static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS && 
         !vaplic_get_pend(vcpu, intp_id) &&
         vaplic_get_active(vcpu, intp_id)){
-        bitmap_set(vaplic->ip, intp_id);
+        BIT32_SET_INTP(vaplic->ip, intp_id);
         ret = true;
     }
     return ret;
@@ -95,7 +101,7 @@ static bool vaplic_get_enblbl(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
-        ret = !!bitmap_get(vaplic->ie, intp_id);
+        ret = !!BIT32_GET_INTP(vaplic->ie, intp_id);
     }
     return ret;
 }
@@ -308,8 +314,8 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
         if (new_val == APLIC_SOURCECFG_SM_INACTIVE){
             bitmap_clear(vaplic->active, intp_id);
             /** Zero pend, en and target registers if intp is now inactive */
-            bitmap_clear(vaplic->ip, intp_id);
-            bitmap_clear(vaplic->ie, intp_id);
+            BIT32_CLR_INTP(vaplic->ip, intp_id);
+            BIT32_CLR_INTP(vaplic->ie, intp_id);
             vaplic->target[intp_id-1] = 0;
         } else {
             bitmap_set(vaplic->active, intp_id);
@@ -333,7 +339,7 @@ static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
     if (reg < APLIC_NUM_SETIx_REGS){
         for(size_t i = (reg*APLIC_NUM_INTP_PER_REG); 
             i < (reg*APLIC_NUM_INTP_PER_REG) + APLIC_NUM_INTP_PER_REG; i++){
-                ret |= (bitmap_get(vaplic->ip, i) << i%32);
+                ret |= (BIT32_GET_INTP(vaplic->ip, i) << i%32);
         }
         ret |= aplic_get32_pend(reg); 
     }
@@ -401,10 +407,10 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
                 if(vaplic_get_hw(vcpu,i)){
                     aplic_clr_pend(i);
                     if(!aplic_get_pend(i)){
-                        bitmap_clear(vaplic->ip, i);
+                        BIT32_CLR_INTP(vaplic->ip, i);
                     }
                 } else {
-                    bitmap_clear(vaplic->ip, i);
+                    BIT32_CLR_INTP(vaplic->ip, i);
                 }
                 vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, i));
             }
@@ -443,10 +449,10 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
         if(vaplic_get_hw(vcpu,new_val)){
             aplic_clr_pend(new_val);
             if (!aplic_get_pend(new_val)){
-                bitmap_clear(vaplic->ip, new_val);
+                BIT32_CLR_INTP(vaplic->ip, new_val);
             }
         } else {
-            bitmap_clear(vaplic->ip, new_val);
+            BIT32_CLR_INTP(vaplic->ip, new_val);
         }
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
     }
@@ -467,7 +473,7 @@ static uint32_t vaplic_get_setie(struct vcpu *vcpu, uint32_t reg){
     if (reg < APLIC_NUM_SETIx_REGS){
         for(size_t i = (reg*APLIC_NUM_INTP_PER_REG); 
             i < (reg*APLIC_NUM_INTP_PER_REG) + APLIC_NUM_INTP_PER_REG; i++){
-                ret |= (bitmap_get(vaplic->ie, i) << i%32);
+                ret |= (BIT32_GET_INTP(vaplic->ie, i) << i%32);
         }
     }
     return ret;
@@ -493,10 +499,10 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
                 if(vaplic_get_hw(vcpu,i)){
                     aplic_set_enbl(i);
                     if(aplic_get_enbl(i)){
-                        bitmap_set(vaplic->ie, i);
+                        BIT32_SET_INTP(vaplic->ie, i);
                     }
                 } else {
-                    bitmap_set(vaplic->ie, i);
+                    BIT32_SET_INTP(vaplic->ie, i);
                 }
             }
             vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, i));
@@ -520,10 +526,10 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
         if(vaplic_get_hw(vcpu, new_val)){
             aplic_set_enbl(new_val);
             if (aplic_get_enbl(new_val)){
-                bitmap_set(vaplic->ie, new_val);
+                BIT32_SET_INTP(vaplic->ie, new_val);
             }
         } else {
-            bitmap_set(vaplic->ie, new_val);
+            BIT32_SET_INTP(vaplic->ie, new_val);
         }
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
     }
@@ -549,10 +555,10 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
                 if(vaplic_get_hw(vcpu,i)){
                     aplic_clr_enbl(i);
                     if(!aplic_get_enbl(i)){
-                        bitmap_clear(vaplic->ie, i);
+                        BIT32_CLR_INTP(vaplic->ie, i);
                     }
                 } else {
-                    bitmap_clear(vaplic->ie, i);
+                    BIT32_CLR_INTP(vaplic->ie, i);
                 }
             }
             vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, i));
@@ -576,10 +582,10 @@ static void vaplic_clr_enbl(struct vcpu *vcpu, uint32_t new_val){
         if(vaplic_get_hw(vcpu, new_val)){
             aplic_clr_enbl(new_val);
             if (!aplic_get_enbl(new_val)){
-                bitmap_clear(vaplic->ie, new_val);
+                BIT32_CLR_INTP(vaplic->ie, new_val);
             }
         } else {
-            bitmap_clear(vaplic->ie, new_val);
+            BIT32_CLR_INTP(vaplic->ie, new_val);
         }
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
     }
@@ -803,7 +809,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
     if (idc_id < vaplic->idc_num){
         ret = vaplic->topi_claimi[idc_id];
         // Clear the virt pending bit for te read intp
-        bitmap_clear(vaplic->ip, (ret >> 16));
+        BIT32_CLR_INTP(vaplic->ip, (ret >> 16));
         /** Spurious intp*/
         if (ret == 0){
             // Clear the virt iforce bit
