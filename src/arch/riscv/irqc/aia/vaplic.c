@@ -46,7 +46,7 @@ static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id);
 void vaplic_set_hw(struct vm *vm, irqid_t intp_id){
     struct vaplic * vaplic = &vm->arch.vaplic;
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS) {
-        BIT32_GET_INTP(vaplic.hw, intp_id);
+        BIT32_SET_INTP(vaplic->hw, intp_id);
     }
 }
 
