@@ -308,8 +308,8 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
         if (new_val == APLIC_SOURCECFG_SM_INACTIVE){
             bitmap_clear(vaplic->active, intp_id);
             /** Zero pend, en and target registers if intp is now inactive */
-            vaplic->ip[intp_id/32] &= ~(1 << intp_id%32);
-            vaplic->ie[intp_id/32] &= ~(1 << intp_id%32);
+            bitmap_clear(vaplic->ip, intp_id);
+            bitmap_clear(vaplic->ie, intp_id);
             vaplic->target[intp_id-1] = 0;
         } else {
             bitmap_set(vaplic->active, intp_id);
