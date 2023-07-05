@@ -149,6 +149,30 @@ enum {UPDATE_HART_LINE};
 static void vaplic_ipi_handler(uint32_t event, uint64_t data);
 CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
 
+static void vaplic_update_single_hart(struct vcpu* vcpu, vcpuid_t vhart_index){
+    vcpuid_t pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, vhart_index);
+    irqid_t intp_id = 0;
+
+    vhart_index &= APLIC_MAX_NUM_HARTS_MAKS;
+
+    /** 
+     *  If the current cpu is the targeting cpu, signal the intp 
+     *  to the hart
+     *  Else, send a mensage to the targeting cpu 
+     */
+    if(pcpu_id == cpu()->id) {
+        intp_id = vaplic_update_topi(vcpu);
+        if(intp_id != 0){
+            CSRS(CSR_HVIP, HIP_VSEIP);
+        } else  {
+            CSRC(CSR_HVIP, HIP_VSEIP);
+        }
+    } else {
+        struct cpu_msg msg = {VPLIC_IPI_ID, UPDATE_HART_LINE, vhart_index};
+        cpu_send_msg(pcpu_id, &msg);       
+    }
+}
+
 /**
  * @brief Update the CPU interrupt line.
  * 
@@ -156,49 +180,17 @@ CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
  */
 static void vaplic_update_hart_line(struct vcpu* vcpu, int16_t vhart_index) 
 {
-    int pcpu_id = 0;
-    irqid_t intp_id = 0;
-    
+    struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
+
     if (aplic_msi_mode())
         return;
 
     if (vhart_index == UPDATE_ALL_HARTS){
         for(size_t i = 0; i < APLIC_DOMAIN_NUM_HARTS; i++){
-            i &= APLIC_MAX_NUM_HARTS_MAKS;
-            pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, i);
-
-            /** 
-             *  If the current cpu is the targeting cpu, signal the intp 
-             *  to the hart
-             *  Else, send a mensage to the targeting cpu 
-             */
-            if(pcpu_id == cpu()->id) {
-                intp_id = vaplic_update_topi(vcpu);
-                if(intp_id != 0){
-                    CSRS(CSR_HVIP, HIP_VSEIP);
-                } else  {
-                    CSRC(CSR_HVIP, HIP_VSEIP);
-                }
-            } else {
-                struct cpu_msg msg = {VPLIC_IPI_ID, UPDATE_HART_LINE, i};
-                cpu_send_msg(pcpu_id, &msg);       
-            }
+            vaplic_update_single_hart(vcpu, i);
         }
-    } else {
-        vhart_index &= APLIC_MAX_NUM_HARTS_MAKS;
-        pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, vhart_index);
-
-        if(pcpu_id == cpu()->id) {
-            intp_id = vaplic_update_topi(vcpu);
-            if(intp_id != 0){
-                CSRS(CSR_HVIP, HIP_VSEIP);
-            } else  {
-                CSRC(CSR_HVIP, HIP_VSEIP);
-            }
-        } else {
-            struct cpu_msg msg = {VPLIC_IPI_ID, UPDATE_HART_LINE, vhart_index};
-            cpu_send_msg(pcpu_id, &msg);       
-        }
+    } else if (vhart_index < vaplic->idc_num){
+        vaplic_update_single_hart(vcpu, (vcpuid_t)vhart_index);
     }
 }
 
