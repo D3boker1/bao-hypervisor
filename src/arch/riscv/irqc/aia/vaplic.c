@@ -282,7 +282,6 @@ static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
 static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
-    /** If intp is valid and new source config is different from prev. one.*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && 
         vaplic_get_sourcecfg(vcpu, intp_id) != new_val) {
         /** If intp is being delegated make whole reg 0.
@@ -300,17 +299,13 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
             new_val = APLIC_SOURCECFG_SM_EDGE_FALL;
         }
 
-        /** Is this intp a phys. intp? */
         if(vaplic_get_hw(vcpu, intp_id)){
-            /** Update in phys. aplic */
             aplic_set_sourcecfg(intp_id, new_val);
-            /** If phys aplic was succe. written, then update virtual*/
             new_val = aplic_get_sourcecfg(intp_id); 
         }
         vaplic->srccfg[intp_id-1] = new_val;
 
-        if (new_val == APLIC_SOURCECFG_SM_INACTIVE)
-        {
+        if (new_val == APLIC_SOURCECFG_SM_INACTIVE){
             bitmap_clear(vaplic->active, intp_id);
             /** Zero pend, en and target registers if intp is now inactive */
             vaplic->ip[intp_id/32] &= ~(1 << intp_id%32);
@@ -319,7 +314,6 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
         } else {
             bitmap_set(vaplic->active, intp_id);
         }
-
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
@@ -635,8 +629,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
             } else {
                 vaplic->target[intp_id-1] = new_vaplic_target;
             }
-            // vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
-            vaplic_update_hart_line(vcpu, vcpu->id);
+            vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
         }
     } else {
         new_val &= APLIC_TARGET_EEID_MASK;
