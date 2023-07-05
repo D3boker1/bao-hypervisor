@@ -99,6 +99,11 @@ void aplic_set_pend(irqid_t int_id)
     aplic_global->setipnum = int_id;
 }
 
+void aplic_set32_pend(uint8_t reg_indx, uint32_t reg_val)
+{
+    aplic_global->setip[reg_indx] = reg_val;
+}
+
 bool aplic_get_pend(irqid_t int_id)
 {
     uint32_t reg_indx = int_id / 32;
@@ -117,11 +122,9 @@ void aplic_clr_pend(irqid_t int_id)
     aplic_global->clripnum = int_id;
 }
 
-bool aplic_get_inclrip(irqid_t int_id)
+uint32_t aplic_get_inclrip(uint8_t reg_indx)
 {
-    uint32_t reg_indx = int_id / 32;
-    uint32_t intp_to_pend_mask = (1U << (int_id % 32));
-    return (aplic_global->in_clrip[reg_indx] & intp_to_pend_mask) != 0;
+    return aplic_global->in_clrip[reg_indx];
 }
 
 void aplic_set_enbl(irqid_t int_id)

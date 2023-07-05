@@ -170,6 +170,8 @@ uint32_t aplic_get_sourcecfg(irqid_t int_id);
  */
 void aplic_set_pend(irqid_t int_id);
 
+void aplic_set32_pend(uint8_t reg_indx, uint32_t reg_val);
+
 /**
  * @brief Read the pending value of a given interrut
  * 
@@ -195,7 +197,7 @@ void aplic_clr_pend(irqid_t intp_id);
  * @return true 
  * @return false 
  */
-bool aplic_get_inclrip(irqid_t int_id);
+uint32_t aplic_get_inclrip(uint8_t reg_indx)
 
 /**
  * @brief Enable a given interrupt writting to setienum register
