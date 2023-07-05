@@ -434,7 +434,6 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
  */
 static uint32_t vaplic_get_in_clrip(struct vcpu *vcpu, uint8_t reg){
     uint32_t ret = 0;
-    struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (reg < APLIC_NUM_CLRIx_REGS) ret = aplic_get_inclrip(reg);
     return ret;
 }

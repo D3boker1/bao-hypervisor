@@ -197,7 +197,7 @@ void aplic_clr_pend(irqid_t intp_id);
  * @return true 
  * @return false 
  */
-uint32_t aplic_get_inclrip(uint8_t reg_indx)
+uint32_t aplic_get_inclrip(uint8_t reg_indx);
 
 /**
  * @brief Enable a given interrupt writting to setienum register
