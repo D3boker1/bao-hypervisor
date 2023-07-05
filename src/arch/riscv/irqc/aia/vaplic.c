@@ -197,7 +197,7 @@ static void vaplic_update_hart_line(struct vcpu* vcpu, int16_t vhart_index)
 
     if (vhart_index == UPDATE_ALL_HARTS){
         for(size_t i = 0; i < APLIC_DOMAIN_NUM_HARTS; i++){
-            vaplic_update_single_hart(vcpu, i);
+            vaplic_update_single_hart(vcpu, (vcpuid_t)i);
         }
     } else if (vhart_index < vaplic->idc_num){
         vaplic_update_single_hart(vcpu, (vcpuid_t)vhart_index);
@@ -214,7 +214,7 @@ static void vaplic_ipi_handler(uint32_t event, uint64_t data)
 {
     switch(event) {
         case UPDATE_HART_LINE:
-            vaplic_update_hart_line(cpu()->vcpu, data);
+            vaplic_update_hart_line(cpu()->vcpu, (int16_t)data);
             break;
     }
 }
