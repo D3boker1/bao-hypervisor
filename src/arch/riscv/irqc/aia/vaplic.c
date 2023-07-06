@@ -664,17 +664,11 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
  * @return uint32_t value with target from intp_id
  */
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
-    uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    cpuid_t pcpu_id = 0;
-    cpuid_t vcpu_id = 0;
+    uint32_t ret = 0;
     
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
-        /** Translate the physical cpu into the its virtual pair */
-        pcpu_id = vaplic->target[intp_id] >> APLIC_TARGET_HART_IDX_SHIFT;
-        vcpu_id = vm_translate_to_vcpuid(vcpu->vm, pcpu_id);
         ret = vaplic->target[intp_id] & APLIC_TARGET_IPRIO_MASK;
-        ret |= (vcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
     }
     return ret;
 }
