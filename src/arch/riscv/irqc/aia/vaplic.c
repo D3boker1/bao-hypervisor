@@ -27,6 +27,10 @@
 #define BIT32_CLR_INTP(reg, intp_id) (reg[intp_id/32] =\
                                       bit32_clear(reg[intp_id/32], intp_id%32))
 
+#define ADDR_INSIDE_RANGE(addr, start, end)\
+                         (addr >= offsetof(struct aplic_global_hw, start) &&\
+                          addr  < offsetof(struct aplic_global_hw, end))
+                          
 /**
  * @brief Converts a virtual cpu id into the physical one
  * 
@@ -1089,18 +1093,18 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
 
 static bool vaplic_domain_emul_reserved (uint16_t addr) {
     bool ret = false;
-    if ((addr < 0x1C00 && addr > 0x0FFC) ||
-        (addr < 0x1CDC && addr > 0x1C7C) || 
-        (addr < 0x1D00 && addr > 0x1CDC) ||
-        (addr < 0x1DDC && addr > 0x1D7C) ||
-        (addr < 0x1E00 && addr > 0x1DDC) ||
-        (addr < 0x1EDC && addr > 0x1E7C) ||
-        (addr < 0x1F00 && addr > 0x1EDC) ||
-        (addr < 0x1FDC && addr > 0x1F7C) ||
-        (addr < 0x2000 && addr > 0x1FDC) ||
-        (addr < 0x3000 && addr > 0x2004) ) {
-            ret = true;
-        }
+    if (ADDR_INSIDE_RANGE(addr, reserved1, setip)       ||
+        ADDR_INSIDE_RANGE(addr, reserved2, setipnum)    ||
+        ADDR_INSIDE_RANGE(addr, reserved3, in_clrip)    ||
+        ADDR_INSIDE_RANGE(addr, reserved4, clripnum)    ||
+        ADDR_INSIDE_RANGE(addr, reserved5, setie)       ||
+        ADDR_INSIDE_RANGE(addr, reserved6, setienum)    ||
+        ADDR_INSIDE_RANGE(addr, reserved7, clrie)       ||
+        ADDR_INSIDE_RANGE(addr, reserved8, clrienum)    ||
+        ADDR_INSIDE_RANGE(addr, reserved9, setipnum_le) ||
+        ADDR_INSIDE_RANGE(addr, reserved10, genmsi)){
+        ret = true;
+    }
     return ret;
 }
 
