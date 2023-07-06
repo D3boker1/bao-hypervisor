@@ -36,37 +36,6 @@ typedef cpuid_t idcid_t;
 #define APLIC_SOURCECFG_SM_LEVEL_LOW    (0x7)
 #define APLIC_SOURCECFG_SM_DEFAULT      APLIC_SOURCECFG_SM_DETACH
 
-/** Sources State*/
-#define IMPLEMENTED                     (1)
-#define NOT_IMPLEMENTED                 (0)
-
-/** APLIC Offsets */
-#define APLIC_DOMAIN_OFF                (0x0000)
-#define APLIC_SOURCECFG_OFF             (0x0004)
-#define APLIC_MMSIADDRCFG_OFF           (0x1BC0)
-#define APLIC_MMSIADDRCFGH_OFF          (0x1BC4)
-#define APLIC_SMSIADDRCFG_OFF           (0x1BC8)
-#define APLIC_SMSIADDRCFGH_OFF          (0x1BCC)
-#define APLIC_SETIP_OFF                 (0x1C00)
-#define APLIC_SETIPNUM_OFF              (0x1CDC)
-#define APLIC_IN_CLRIP_OFF              (0x1D00)
-#define APLIC_CLRIPNUM_OFF              (0x1DDC)
-#define APLIC_SETIE_OFF                 (0x1E00)
-#define APLIC_SETIENUM_OFF              (0x1EDC)
-#define APLIC_CLRIE_OFF                 (0x1F00)
-#define APLIC_CLRIENUM_OFF              (0x1FDC)
-#define APLIC_SETIPNUM_LE_OFF           (0x2000)
-#define APLIC_SETIPNUM_BE_OFF           (0x2004)
-#define APLIC_GENMSI_OFF                (0x3000)
-#define APLIC_TARGET_OFF                (0x3004)
-
-/** IDC Offsets */
-#define APLIC_IDC_IDELIVERY_OFF         (0x00)
-#define APLIC_IDC_IFORCE_OFF            (0x04)
-#define APLIC_IDC_ITHRESHOLD_OFF        (0x08)
-#define APLIC_IDC_TOPI_OFF              (0x18)
-#define APLIC_IDC_CLAIMI_OFF            (0x1C)
-
 /** APLIC fields and masks defines */
 #define APLIC_DOMAINCFG_DM              (1U << 2)
 #define APLIC_DOMAINCFG_IE              (1U << 8)

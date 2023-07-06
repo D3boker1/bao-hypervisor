@@ -12,9 +12,9 @@
 #include <arch/csrs.h>
 #include <config.h>
 
-#define APLIC_MIN_PRIO 0xFF
-#define MASK_INTP_ZERO (0xFFFFFFFE)
-#define UPDATE_ALL_HARTS (-1)
+#define APLIC_MIN_PRIO      (0xFF)
+#define MASK_INTP_ZERO      (0xFFFFFFFE)
+#define UPDATE_ALL_HARTS    (-1)
 
 #define GET_HART_INDEX(vcpu, intp_id) ((vaplic_get_target(vcpu, intp_id) >> \
                                         APLIC_TARGET_HART_IDX_SHIFT) & \
@@ -30,7 +30,7 @@
 #define ADDR_INSIDE_RANGE(addr, start, end)\
                          (addr >= offsetof(struct aplic_global_hw, start) &&\
                           addr  < offsetof(struct aplic_global_hw, end))
-                          
+
 /**
  * @brief Converts a virtual cpu id into the physical one
  * 
