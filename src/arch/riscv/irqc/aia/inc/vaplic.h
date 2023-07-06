@@ -26,7 +26,6 @@ struct vaplic {
     uint32_t active[APLIC_MAX_INTERRUPTS/32];
     uint32_t ip[APLIC_MAX_INTERRUPTS/32];
     uint32_t ie[APLIC_MAX_INTERRUPTS/32];
-    uint32_t in_clrip[APLIC_MAX_INTERRUPTS/32];
     uint32_t target[APLIC_MAX_INTERRUPTS-1];
     BITMAP_ALLOC(idelivery, APLIC_DOMAIN_NUM_HARTS);
     BITMAP_ALLOC(iforce, APLIC_DOMAIN_NUM_HARTS);
