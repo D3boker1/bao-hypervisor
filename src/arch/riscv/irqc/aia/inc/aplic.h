@@ -207,6 +207,8 @@ uint32_t aplic_get_inclrip(uint8_t reg_indx);
  */
 void aplic_set_enbl(irqid_t int_id);
 
+void aplic_set32_enbl(uint8_t reg_indx, uint32_t reg_val);
+
 bool aplic_get_enbl(irqid_t int_id);
 /**
  * @brief Clear enable bit be writting to clrie register of a given interrupt. 
@@ -215,6 +217,8 @@ bool aplic_get_enbl(irqid_t int_id);
  * @param int_id Interrupt to clear the enable bit
  */
 void aplic_clr_enbl(irqid_t int_id);
+
+void aplic_clr32_enbl(uint8_t reg_indx, uint32_t reg_val);
 
 /**
  * @brief Write to register target (see AIA spec 0.3.2 section 4.5.16)
