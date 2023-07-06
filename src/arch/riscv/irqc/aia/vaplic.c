@@ -267,13 +267,12 @@ static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
  * @return uint32_t 
  */
 static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
-    uint32_t real_int_id = intp_id - 1;
     uint32_t ret = 0;
 
-    if(intp_id != 0){
+    if(intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
         struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-        if (real_int_id < APLIC_MAX_INTERRUPTS){
-            ret = vaplic->srccfg[real_int_id];
+        if (intp_id < APLIC_MAX_INTERRUPTS){
+            ret = vaplic->srccfg[intp_id];
         } 
     }
     return ret;
@@ -310,14 +309,14 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
             aplic_set_sourcecfg(intp_id, new_val);
             new_val = aplic_get_sourcecfg(intp_id); 
         }
-        vaplic->srccfg[intp_id-1] = new_val;
+        vaplic->srccfg[intp_id] = new_val;
 
         if (new_val == APLIC_SOURCECFG_SM_INACTIVE){
             BIT32_CLR_INTP(vaplic->active, intp_id);
             /** Zero pend, en and target registers if intp is now inactive */
             BIT32_CLR_INTP(vaplic->ip, intp_id);
             BIT32_CLR_INTP(vaplic->ie, intp_id);
-            vaplic->target[intp_id-1] = 0;
+            vaplic->target[intp_id] = 0;
         } else {
             BIT32_SET_INTP(vaplic->active, intp_id);
         }
@@ -633,10 +632,10 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
             if(vaplic_get_hw(vcpu, intp_id)){
                 aplic_set_target(intp_id, new_aplic_target);
                 if(aplic_get_target(intp_id) == new_aplic_target){
-                    vaplic->target[intp_id-1] = new_vaplic_target;
+                    vaplic->target[intp_id] = new_vaplic_target;
                 }
             } else {
-                vaplic->target[intp_id-1] = new_vaplic_target;
+                vaplic->target[intp_id] = new_vaplic_target;
             }
             vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
         }
@@ -648,10 +647,10 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
         if(vaplic_get_hw(vcpu, intp_id)){
             aplic_set_target(intp_id, new_val);
             if(aplic_get_target(intp_id) == new_val){
-                vaplic->target[intp_id-1] = new_val;
+                vaplic->target[intp_id] = new_val;
             }
         } else {
-            vaplic->target[intp_id-1] = new_val;
+            vaplic->target[intp_id] = new_val;
         }
     }
     spin_unlock(&vaplic->lock);
@@ -672,9 +671,9 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     
     if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
         /** Translate the physical cpu into the its virtual pair */
-        pcpu_id = vaplic->target[intp_id -1] >> APLIC_TARGET_HART_IDX_SHIFT;
+        pcpu_id = vaplic->target[intp_id] >> APLIC_TARGET_HART_IDX_SHIFT;
         vcpu_id = vm_translate_to_vcpuid(vcpu->vm, pcpu_id);
-        ret = vaplic->target[intp_id -1] & APLIC_TARGET_IPRIO_MASK;
+        ret = vaplic->target[intp_id] & APLIC_TARGET_IPRIO_MASK;
         ret |= (vcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
     }
     return ret;
