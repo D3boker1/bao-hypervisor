@@ -128,7 +128,6 @@ static bool vaplic_update_topi(struct vcpu* vcpu){
     bool domain_enbl = false;
     bool idc_enbl = false;
     bool idc_force =  false;
-    bool force_intp = false;
 
     /** Find highest pending and enabled interrupt */
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
@@ -149,17 +148,14 @@ static bool vaplic_update_topi(struct vcpu* vcpu){
     domain_enbl = !!(vaplic_get_domaincfg(vcpu) & APLIC_DOMAINCFG_IE);
     idc_enbl = !!(vaplic_get_idelivery(vcpu, intp_hart_index));
     idc_force = !!(vaplic_get_iforce(vcpu, intp_hart_index));
-    
-    if(idc_force && (intp_id == APLIC_MAX_INTERRUPTS)){
-        intp_id = 0;
-        intp_prio = 0;
-        force_intp = true;
-    }
-    
+      
     if (intp_id != APLIC_MAX_INTERRUPTS) {
-        if ((intp_prio < idc_threshold || idc_threshold == 0 || force_intp) && 
+        if ((intp_prio < idc_threshold || idc_threshold == 0 || idc_force) && 
             idc_enbl && domain_enbl){
-            force_intp = false;
+            if(idc_force){
+                intp_id = 0;
+                intp_prio = 0;
+            }
             vaplic->topi_claimi[intp_hart_index] = (intp_id << 16) | intp_prio;
             return true;
         }
