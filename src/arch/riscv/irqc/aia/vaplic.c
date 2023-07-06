@@ -339,7 +339,7 @@ static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
 
     if (reg < APLIC_NUM_SETIx_REGS){
         ret = vaplic->ip[reg];
-        ret |= aplic_get32_pend(reg); 
+        ret |= (aplic_get32_pend(reg) & vaplic->hw[reg]); 
     }
     return ret;
 }
@@ -357,7 +357,8 @@ static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     spin_lock(&vaplic->lock);
     if (reg == 0) new_val &= MASK_INTP_ZERO;
     if (reg < APLIC_NUM_SETIx_REGS) {
-        vaplic->ip[reg] = new_val & vaplic->active[reg];
+        new_val &= vaplic->active[reg];
+        vaplic->ip[reg] = new_val;
         vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
         // Alternative code. Waiting review.
         // for(size_t i = (reg*APLIC_NUM_INTP_PER_REG); 
@@ -401,8 +402,10 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
     spin_lock(&vaplic->lock);
     if (reg == 0) new_val &= MASK_INTP_ZERO;
     if (reg < APLIC_NUM_CLRIx_REGS) {
-        aplic_set32_pend(reg, new_val);
+        new_val &= vaplic->active[reg];
         vaplic->ip[reg] &= ~(new_val);
+        new_val &= vaplic->hw[reg];
+        aplic_set32_pend(reg, new_val);
         vaplic->ip[reg] |= aplic_get32_pend(reg);
         vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
         // Alternative code. Waiting review.
