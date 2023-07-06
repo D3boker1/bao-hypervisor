@@ -1213,19 +1213,19 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
     addr = addr - cpu()->vcpu->vm->arch.vaplic.aplic_idc_emul.va_base;
     addr = addr - (sizeof(struct aplic_hart_hw) * idc_id);
     switch (addr & 0x1F) {
-        case APLIC_IDC_IDELIVERY_OFF:
+        case offsetof(struct aplic_hart_hw, idelivery):
             vaplic_emul_idelivery_access(acc, idc_id);
             break;
-        case APLIC_IDC_IFORCE_OFF:
+        case offsetof(struct aplic_hart_hw, iforce):
             vaplic_emul_iforce_access(acc, idc_id);
             break;
-        case APLIC_IDC_ITHRESHOLD_OFF:
+        case offsetof(struct aplic_hart_hw, ithreshold):
             vaplic_emul_ithreshold_access(acc, idc_id);
             break;
-        case APLIC_IDC_TOPI_OFF:
+        case offsetof(struct aplic_hart_hw, topi):
             vaplic_emul_topi_access(acc, idc_id);
             break;
-        case APLIC_IDC_CLAIMI_OFF:
+        case offsetof(struct aplic_hart_hw, claimi):
             vaplic_emul_claimi_access(acc, idc_id);
             break;
         default:
@@ -1234,7 +1234,6 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
             }
             break;
     }
-
     return true;
 }
 
