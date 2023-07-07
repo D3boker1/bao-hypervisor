@@ -34,7 +34,7 @@ typedef cpuid_t idcid_t;
 #define APLIC_SOURCECFG_SM_EDGE_FALL    (0x5)
 #define APLIC_SOURCECFG_SM_LEVEL_HIGH   (0x6)
 #define APLIC_SOURCECFG_SM_LEVEL_LOW    (0x7)
-#define APLIC_SOURCECFG_SM_DEFAULT      APLIC_SOURCECFG_SM_DETACH
+#define APLIC_SOURCECFG_SM_DEFAULT      APLIC_SOURCECFG_SM_INACTIVE
 
 /** APLIC fields and masks defines */
 #define APLIC_DOMAINCFG_DM              (1U << 2)

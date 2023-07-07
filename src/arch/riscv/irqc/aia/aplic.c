@@ -23,8 +23,6 @@
 #define APLIC_IDC_ITHRESHOLD_EN_ALL     (0)
 #define APLIC_IDC_ITHRESHOLD_DISBL_ALL  (1)
 
-#define APLIC_SRCCFG_DEFAULT            APLIC_SRCCFG_DETACH    
-
 /** APLIC public data */
 volatile struct aplic_global_hw *aplic_global;
 volatile struct aplic_hart_hw *aplic_hart;
@@ -34,7 +32,6 @@ bool inline aplic_msi_mode(void)
     return (aplic_global->domaincfg & APLIC_DOMAINCFG_DM) && APLIC_DOMAINCFG_DM;
 }
 
-/** APLIC public functions */
 /** Initialization Functions */
 void aplic_init(void)
 {
@@ -46,7 +43,7 @@ void aplic_init(void)
         platform.arch.irqc.aia.aplic.base + HART_REG_OFF,
         NUM_PAGES(sizeof(struct aplic_hart_hw)*IRQC_HART_INST));
     
-    /** Ensure that instructions after fence have the PLIC fully mapped */
+    /** Ensure that instructions after fence have the APLIC fully mapped */
     fence_sync();
 
     aplic_global->domaincfg = 0;
@@ -60,10 +57,10 @@ void aplic_init(void)
         aplic_global->setie[i] = 0;
     }
 
-    /** Sets the default value of hart index and prio for implemented sources*/
+    /** Sets the default value of target and sourcecfg */
     for (size_t i = 0; i < APLIC_NUM_TARGET_REGS; i++){
-        if (!aplic_msi_mode())
-        {
+        aplic_global->sourcecfg[i] = APLIC_SOURCECFG_SM_DEFAULT;
+        if (!aplic_msi_mode()){
             aplic_global->target[i] = APLIC_TARGET_PRIO_DEFAULT;
         } else {
             aplic_global->target[i] = i;
