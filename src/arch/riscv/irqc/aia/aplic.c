@@ -10,11 +10,7 @@
 
 /** APLIC fields and masks defines */
 #define APLIC_DOMAINCFG_CTRL_MASK       (0x1FF)
-
 #define DOMAINCFG_DM                    (1U << 2)
-
-#define INTP_IDENTITY                   (16)
-#define INTP_IDENTITY_MASK              (0x3FF)
 
 #define APLIC_DISABLE_IDELIVERY	        (0)
 #define APLIC_ENABLE_IDELIVERY	        (1)
@@ -203,18 +199,19 @@ uint32_t aplic_idc_get_claimi(idcid_t idc_id)
     return ret;
 }
 
-/** APLIC Interrupt handler */
 void aplic_handle(void){
-    uint32_t intp_identity;
+    irqid_t intp_identity = 0;
     idcid_t idc_id = cpu()->id;
 
-    intp_identity = (aplic_hart[idc_id].claimi >> INTP_IDENTITY) & INTP_IDENTITY_MASK;
-    if(intp_identity > 0){
+    intp_identity = (aplic_hart[idc_id].claimi >> IDC_CLAIMI_INTP_ID_SHIFT) & 
+                                                       IDC_CLAIMI_INTP_ID_MASK;
+    while(intp_identity > 0){
         enum irq_res res = interrupts_handle(intp_identity);
         if (res == HANDLED_BY_HYP){
             /** Read the claimi to clear the interrupt */
             aplic_idc_get_claimi(idc_id);
-        } 
+        }
+        intp_identity = (aplic_hart[idc_id].claimi >> IDC_CLAIMI_INTP_ID_SHIFT) & 
+                                                       IDC_CLAIMI_INTP_ID_MASK;
     }
-
 }

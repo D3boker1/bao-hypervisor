@@ -53,6 +53,10 @@ typedef cpuid_t idcid_t;
 #define APLIC_TARGET_PRIO_DEFAULT       (1)
 #define APLIC_TARGET_DIRECT_MASK        (0xFFFC00FF)
 #define APLIC_TARGET_MSI_MASK           (0xFFFFF7FF)
+
+#define IDC_CLAIMI_INTP_ID_SHIFT        (16)
+#define IDC_CLAIMI_INTP_ID_MASK         (0x3FF)
+
 /** Data structures for APLIC devices */
 struct aplic_global_hw {
     uint32_t domaincfg;
