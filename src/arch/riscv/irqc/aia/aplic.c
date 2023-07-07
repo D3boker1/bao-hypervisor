@@ -8,10 +8,6 @@
 #include <interrupts.h>
 #include <fences.h>
 
-/** APLIC fields and masks defines */
-#define APLIC_DOMAINCFG_CTRL_MASK       (0x1FF)
-#define DOMAINCFG_DM                    (1U << 2)
-
 #define APLIC_DISABLE_IDELIVERY	        (0)
 #define APLIC_ENABLE_IDELIVERY	        (1)
 #define APLIC_DISABLE_IFORCE	        (0)
