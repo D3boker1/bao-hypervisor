@@ -175,11 +175,7 @@ void aplic_handle(void){
     intp_identity = (aplic_hart[idc_id].claimi >> IDC_CLAIMI_INTP_ID_SHIFT) & 
                                                        IDC_CLAIMI_INTP_ID_MASK;
     while(intp_identity > 0){
-        enum irq_res res = interrupts_handle(intp_identity);
-        if (res == HANDLED_BY_HYP){
-            /** Read the claimi to clear the interrupt */
-            aplic_idc_get_claimi(idc_id);
-        }
+        interrupts_handle(intp_identity);
         intp_identity = (aplic_hart[idc_id].claimi >> IDC_CLAIMI_INTP_ID_SHIFT) & 
                                                        IDC_CLAIMI_INTP_ID_MASK;
     }
