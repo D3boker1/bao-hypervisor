@@ -3,8 +3,8 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef __VPLIC_H__
-#define __VPLIC_H__
+#ifndef VPLIC_H
+#define VPLIC_H
 
 #include <bao.h>
 #include <plic.h>

@@ -3,8 +3,8 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef __VAPLIC_H__
-#define __VAPLIC_H__
+#ifndef VAPLIC_H
+#define VAPLIC_H
 
 #include <bao.h>
 #include <aplic.h>

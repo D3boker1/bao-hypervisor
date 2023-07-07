@@ -3,8 +3,8 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef __ARCH_VM_H__
-#define __ARCH_VM_H__
+#ifndef ARCH_VM_H
+#define ARCH_VM_H
 
 #include <bao.h>
 #include <irqc.h>

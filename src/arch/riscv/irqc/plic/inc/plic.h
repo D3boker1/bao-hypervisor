@@ -3,8 +3,8 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef __PLIC_H__
-#define __PLIC_H__
+#ifndef PLIC_H
+#define PLIC_H
 
 #include <bao.h>
 #include <platform.h>

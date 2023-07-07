@@ -3,8 +3,8 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef __ARCH_INTERRUPTS_H__
-#define __ARCH_INTERRUPTS_H__
+#ifndef ARCH_INTERRUPTS_H
+#define ARCH_INTERRUPTS_H
 
 #include <bao.h>
 #include <irqc.h>
