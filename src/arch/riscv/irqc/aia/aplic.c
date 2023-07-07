@@ -141,7 +141,7 @@ bool aplic_get_pend(irqid_t int_id)
     }
 }
 
-void aplic_set_clripnum(irqid_t int_id)
+void aplic_clr_pend(irqid_t int_id)
 {
     if (impl_src[int_id] == IMPLEMENTED)
     {
@@ -161,7 +161,7 @@ bool aplic_get_inclrip(irqid_t int_id)
     }
 }
 
-void aplic_set_ienum(irqid_t int_id)
+void aplic_set_enbl(irqid_t int_id)
 {
     if (impl_src[int_id] == IMPLEMENTED)
     {
@@ -169,7 +169,7 @@ void aplic_set_ienum(irqid_t int_id)
     }
 }
 
-void aplic_set_clrienum(irqid_t int_id)
+void aplic_clr_enbl(irqid_t int_id)
 {
     if (impl_src[int_id] == IMPLEMENTED)
     {

@@ -370,7 +370,7 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
                 if(!get_bit_from_reg(vaplic->setip[reg], i) && ((new_val >> i) & 1)){
-                    aplic_set_clripnum(i);
+                    aplic_clr_pend(i);
                 }
             } else {
                 vaplic_update_hart_line(vcpu);
@@ -409,7 +409,7 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
         get_bit_from_reg(vaplic->setip[new_val/32], new_val)) {
         clr_bit_from_reg(&vaplic->setip[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
-            aplic_set_clripnum(new_val);
+            aplic_clr_pend(new_val);
         } else {
             vaplic_update_hart_line(vcpu);
         }
@@ -451,7 +451,7 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
             if(vaplic_get_hw(vcpu,i)){
                 /** Update in phys. aplic */
                 if(get_bit_from_reg(vaplic->setie[reg], i) && ((new_val >> i) & 1)){
-                    aplic_set_ienum(i);
+                    aplic_set_enbl(i);
                 }
             } else {
                 /** If intp is not phys. emul aplic behaviour */
@@ -475,7 +475,7 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
         !get_bit_from_reg(vaplic->setie[new_val/32], new_val)) {
         set_bit_from_reg(&vaplic->setie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
-            aplic_set_ienum(new_val);
+            aplic_set_enbl(new_val);
         } else {
             vaplic_update_hart_line(vcpu);
         }
@@ -500,7 +500,7 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
         for(int i = 0; i < APLIC_MAX_INTERRUPTS/APLIC_NUM_CLRIx_REGS; i++){
             if(vaplic_get_hw(vcpu,i)){
                 if(!get_bit_from_reg(vaplic->setie[reg], i) && ((new_val >> i) & 1)){
-                    aplic_set_clrienum(i);
+                    aplic_clr_enbl(i);
                 }
             } else {
                 vaplic_update_hart_line(vcpu);
@@ -523,7 +523,7 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
         get_bit_from_reg(vaplic->setie[new_val/32], new_val)) {
         clr_bit_from_reg(&vaplic->setie[new_val/32], new_val%32);
         if(vaplic_get_hw(vcpu,new_val)){
-            aplic_set_clrienum(new_val);
+            aplic_clr_enbl(new_val);
         } else {
             vaplic_update_hart_line(vcpu);
         }

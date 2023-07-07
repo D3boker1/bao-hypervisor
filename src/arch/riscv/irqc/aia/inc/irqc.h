@@ -28,7 +28,7 @@ static inline void irqc_cpu_init()
 
 static inline void irqc_set_enbl(irqid_t int_id, bool en)
 {
-    aplic_set_ienum(int_id);
+    aplic_set_enbl(int_id);
 }
 
 static inline void irqc_set_prio(irqid_t int_id)
@@ -46,9 +46,9 @@ static inline bool irqc_get_pend(irqid_t int_id)
     return aplic_get_pend(int_id);
 }
 
-static inline void irqc_set_clrienum(irqid_t int_id)
+static inline void irqc_clr_pend(irqid_t int_id)
 {
-    aplic_set_clrienum(int_id);
+    aplic_clr_pend(int_id);
 }
 
 static inline void virqc_set_hw(struct vm *vm, irqid_t id)

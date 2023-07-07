@@ -113,7 +113,7 @@ void interrupts_arch_clear(irqid_t int_id)
          */
         WARNING("trying to clear timer interrupt");
     } else {
-        irqc_set_clrienum(int_id);
+        irqc_clr_pend(int_id);
     }
 }
 

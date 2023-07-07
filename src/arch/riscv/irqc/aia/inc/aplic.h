@@ -175,7 +175,7 @@ bool aplic_get_pend(irqid_t int_id);
  *  
  * @param int_id interrupt to clear the pending bit from
  */
-void aplic_set_clripnum(irqid_t intp_id);
+void aplic_clr_pend(irqid_t intp_id);
 
 /**
  * @brief Read the current rectified value for a given interrupt
@@ -192,7 +192,7 @@ bool aplic_get_inclrip(irqid_t int_id);
  * 
  * @param int_id Interrupt to be enabled
  */
-void aplic_set_ienum(irqid_t int_id);
+void aplic_set_enbl(irqid_t int_id);
 
 /**
  * @brief Clear enable bit be writting to clrie register of a given interrupt. 
@@ -200,7 +200,7 @@ void aplic_set_ienum(irqid_t int_id);
  * 
  * @param int_id Interrupt to clear the enable bit
  */
-void aplic_set_clrienum(irqid_t int_id);
+void aplic_clr_enbl(irqid_t int_id);
 
 /**
  * @brief Write to register target (see AIA spec 0.3.2 section 4.5.16)
