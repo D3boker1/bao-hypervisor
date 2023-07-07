@@ -558,7 +558,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
     if (intp_id > 0  && intp_id < APLIC_MAX_INTERRUPTS && 
         vaplic_get_target(vcpu, intp_id) != new_val) {
 
-        new_val &= APLIC_TARGET_MASK;
+        new_val &= APLIC_TARGET_DIRECT_MASK;
         /** If prio is 0, set to 1 (max)*/
         if ((new_val & APLIC_TARGET_IPRIO_MASK) == 0){
             new_val |= APLIC_TARGET_PRIO_DEFAULT;
@@ -566,8 +566,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
         
         if(vaplic_get_hw(vcpu, intp_id)){
             aplic_set_target(intp_id, new_val);
-            if(impl_src[intp_id] == IMPLEMENTED && 
-               aplic_get_target(intp_id) == new_val){
+            if(aplic_get_target(intp_id) == new_val){
                 vaplic->target[intp_id-1] = new_val;
             }
         } else {
@@ -743,7 +742,7 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
             vaplic->iforce[idc_id] = 0;
             if(vaplic_get_hw(vcpu,(ret >> 16))){
                 // Clear the physical iforce bit
-                aplic_idc_set_iforce(idc_id, 0);
+                // aplic_idc_set_iforce(idc_id, 0);
             }
         }
         // Clear the virt pending bit for te read intp
@@ -1045,7 +1044,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
 
         vm->arch.vaplic.aplic_idc_emul = (struct emul_mem) {
             .va_base = arch_platform->irqc.aia.aplic.base + APLIC_IDC_OFF,
-            .size = sizeof(struct aplic_hart_hw)*APLIC_PLAT_IDC_NUM,
+            .size = sizeof(struct aplic_hart_hw)*APLIC_DOMAIN_NUM_HARTS,
             .handler = vaplic_idc_emul_handler
         };
 

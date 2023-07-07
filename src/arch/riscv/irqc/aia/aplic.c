@@ -23,52 +23,21 @@
 #define APLIC_IDC_ITHRESHOLD_EN_ALL     (0)
 #define APLIC_IDC_ITHRESHOLD_DISBL_ALL  (1)
 
-#define APLIC_SRCCFG_DEFAULT            APLIC_SRCCFG_DETACH    
-
 /** APLIC public data */
 volatile struct aplic_global_hw *aplic_global;
 volatile struct aplic_hart_hw *aplic_hart;
 
-/** APLIC private data */
-size_t APLIC_IMPL_INTERRUPTS;
-size_t APLIC_IMPL_INTERRUPTS_REGS;
-uint32_t impl_src[APLIC_MAX_INTERRUPTS];
-
-/** APLIC private functions */
-/**
- * @brief Populate impl_src array with 1's if source i is an active
- *        source in this domain
- * 
- * @return size_t total number of implemented interrupts
- */
-static size_t aplic_scan_impl_int(void)
-{
-    size_t count = APLIC_MAX_INTERRUPTS-1;
-    for (size_t i = 0; i < APLIC_MAX_INTERRUPTS-1; i++) {
-        aplic_global->sourcecfg[i] = APLIC_SOURCECFG_SM_DEFAULT;
-        impl_src[i] = IMPLEMENTED;
-        if (aplic_global->sourcecfg[i] == APLIC_SOURCECFG_SM_INACTIVE) {
-            impl_src[i] = NOT_IMPLEMENTED;
-            count -= 1;           
-        }
-        aplic_global->sourcecfg[i] = APLIC_SOURCECFG_SM_INACTIVE;
-    }
-    return count;
-}
-
-/** APLIC public functions */
-/** Initialization Functions */
 void aplic_init(void)
 {
     /** Maps APLIC device */
     aplic_global = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
             platform.arch.irqc.aia.aplic.base, NUM_PAGES(sizeof(struct aplic_global_hw)));
-    
+        
     aplic_hart = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
-                platform.arch.irqc.aia.aplic.base + HART_REG_OFF,
-                NUM_PAGES(sizeof(struct aplic_hart_hw)*IRQC_HART_INST));
+        platform.arch.irqc.aia.aplic.base + HART_REG_OFF,
+        NUM_PAGES(sizeof(struct aplic_hart_hw)*IRQC_HART_INST));
     
-    /** Ensure that instructions after fence have the PLIC fully mapped */
+    /** Ensure that instructions after fence have the APLIC fully mapped */
     fence_sync();
 
     aplic_global->domaincfg = 0;
@@ -79,15 +48,12 @@ void aplic_init(void)
         aplic_global->setie[i] = 0;
     }
 
-    APLIC_IMPL_INTERRUPTS = aplic_scan_impl_int();
-
-    /** Sets the default value of hart index and prio for implemented sources*/
+    /** Sets the default value of target and sourcecfg */
     for (size_t i = 0; i < APLIC_NUM_TARGET_REGS; i++){
-        if(impl_src[i] == IMPLEMENTED){
-            aplic_global->target[i] = APLIC_TARGET_PRIO_DEFAULT;
-        }
+        aplic_global->sourcecfg[i] = APLIC_SOURCECFG_SM_DEFAULT;
+        aplic_global->target[i] = APLIC_TARGET_PRIO_DEFAULT;
+       
     }
-
     aplic_global->domaincfg |= APLIC_DOMAINCFG_IE;
 }
 
@@ -98,152 +64,89 @@ void aplic_idc_init(void){
     aplic_hart[idc_index].idelivery = APLIC_ENABLE_IDELIVERY;
 }
 
-/** Domain functions */
-void aplic_set_sourcecfg(irqid_t int_id, uint32_t val)
+void aplic_set_sourcecfg(irqid_t intp_id, uint32_t val)
 {
-    uint32_t real_int_id = int_id - 1;
-    if(impl_src[real_int_id] == IMPLEMENTED){
-        if(!(val & APLIC_SRCCFG_D) && 
-            ((val & (APLIC_SRCCFG_SM)) != 2) && ((val & (APLIC_SRCCFG_SM)) != 3)){
-                aplic_global->sourcecfg[real_int_id] = val & APLIC_SOURCECFG_SM_MASK;
-        }
-    }
+    aplic_global->sourcecfg[intp_id - 1] = val & APLIC_SOURCECFG_SM_MASK;
 }
 
-uint32_t aplic_get_sourcecfg(irqid_t int_id)
+uint32_t aplic_get_sourcecfg(irqid_t intp_id)
 {
-    uint32_t ret = 0;
-    uint32_t real_int_id = int_id - 1;
-    if(impl_src[real_int_id] == IMPLEMENTED){
-        ret = aplic_global->sourcecfg[real_int_id];
-    }
-    return ret;
+    return aplic_global->sourcecfg[intp_id - 1];
 }
 
-void aplic_set_pend(irqid_t int_id)
+void aplic_set_pend(irqid_t intp_id)
 {
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        aplic_global->setipnum = int_id;
-    }
+    aplic_global->setipnum = intp_id;
 }
 
-bool aplic_get_pend(irqid_t int_id)
+void aplic_set32_pend(uint8_t reg_indx, uint32_t reg_val)
 {
-    uint32_t reg_indx = int_id / 32;
-    uint32_t intp_to_pend_mask = (1U << (int_id % 32));
-
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        return aplic_global->setip[reg_indx] & intp_to_pend_mask;
-    } else {
-        return false;
-    }
+    aplic_global->setip[reg_indx] = reg_val;
 }
 
-void aplic_clr_pend(irqid_t int_id)
+bool aplic_get_pend(irqid_t intp_id)
 {
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        aplic_global->clripnum = int_id;
-    }
+    uint32_t reg_indx = intp_id / 32;
+    uint32_t intp_to_pend_mask = (1U << (intp_id % 32));
+
+    return (aplic_global->setip[reg_indx] & intp_to_pend_mask) != 0;
 }
 
-bool aplic_get_inclrip(irqid_t int_id)
+void aplic_clr_pend(irqid_t intp_id)
 {
-    uint32_t reg_indx = int_id / 32;
-    uint32_t intp_to_pend_mask = (1U << (int_id % 32));
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        return aplic_global->in_clrip[reg_indx] & intp_to_pend_mask;
-    } else {
-        return false;
-    }
+    aplic_global->clripnum = intp_id;
 }
 
-void aplic_set_enbl(irqid_t int_id)
+uint32_t aplic_get_inclrip(uint8_t reg_indx)
 {
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        aplic_global->setienum = int_id;
-    }
+    return aplic_global->in_clrip[reg_indx];
 }
 
-void aplic_clr_enbl(irqid_t int_id)
+void aplic_set_enbl(irqid_t intp_id)
 {
-    if (impl_src[int_id] == IMPLEMENTED)
-    {
-        aplic_global->clrienum = int_id;
-    }
+    aplic_global->setienum = intp_id;
 }
 
-void aplic_set_target(irqid_t int_id, uint32_t val)
-{
-    uint32_t real_int_id = int_id - 1;
-    uint8_t priority = val & APLIC_TARGET_IPRIO_MASK;
-    uint32_t hart_index = (val >> APLIC_TARGET_HART_IDX_SHIFT);
-    //uint32_t guest_index = (aplic_global->target[real_int_id] >> 12) & 0x3F;
+bool aplic_get_enbl(irqid_t intp_id){
+    uint32_t reg_indx = intp_id / 32;
+    uint32_t intp_to_pend_mask = (1U << (intp_id % 32));
 
-    if(impl_src[real_int_id] == IMPLEMENTED){
-        /** Evaluate in what delivery mode the domain is configured*/
-        /** Direct Mode*/
-        if(((aplic_global->domaincfg & APLIC_DOMAINCFG_CTRL_MASK) & DOMAINCFG_DM) == 0){
-            /** Checks priority and hart index range */
-            if((priority > 0) && (priority <= APLIC_TARGET_IPRIO_MASK) && 
-               (hart_index < APLIC_PLAT_IDC_NUM)){
-                aplic_global->target[real_int_id] = val;
-            }
-        }
-        /** MSI Mode*/
-        else{ 
-
-        }
-    }
+    return (aplic_global->setie[reg_indx] & intp_to_pend_mask) != 0;
 }
 
-uint32_t aplic_get_target(irqid_t int_id)
+void aplic_clr_enbl(irqid_t intp_id)
 {
-    uint32_t real_int_id = int_id - 1;
-    uint32_t ret = 0;
-    if(impl_src[real_int_id] == IMPLEMENTED){
-        ret = aplic_global->target[real_int_id];
-    }
-    return ret;
+    aplic_global->clrienum = intp_id;
 }
 
-/** IDC functions */
-void aplic_idc_set_iforce(idcid_t idc_id, bool en)
+void aplic_set_target(irqid_t intp_id, uint32_t val)
 {
-    if(idc_id < APLIC_PLAT_IDC_NUM) {
-        if (en){
-            aplic_hart[idc_id].iforce = APLIC_ENABLE_IFORCE;
-        }else{
-            aplic_hart[idc_id].iforce = APLIC_DISABLE_IFORCE;
-        }
-    }
+    aplic_global->target[intp_id - 1] = val & APLIC_TARGET_DIRECT_MASK;
+}
+
+uint32_t aplic_get_target(irqid_t intp_id)
+{
+    return aplic_global->target[intp_id - 1];
 }
 
 uint32_t aplic_idc_get_claimi(idcid_t idc_id)
 {
     uint32_t ret = 0;
-    if(idc_id < APLIC_PLAT_IDC_NUM) {
+    if(idc_id < APLIC_DOMAIN_NUM_HARTS) {
         ret = aplic_hart[idc_id].claimi;
     }
     return ret;
 }
 
-/** APLIC Interrupt handler */
 void aplic_handle(void){
-    uint32_t intp_identity;
+    irqid_t intp_identity = 0;
     idcid_t idc_id = cpu()->id;
 
-    intp_identity = (aplic_hart[idc_id].claimi >> INTP_IDENTITY) & INTP_IDENTITY_MASK;
-    if(intp_identity > 0){
-        enum irq_res res = interrupts_handle(intp_identity);
-        if (res == HANDLED_BY_HYP){
-            /** Read the claimi to clear the interrupt */
-            aplic_idc_get_claimi(idc_id);
-        } 
+    intp_identity = (aplic_hart[idc_id].claimi >> IDC_CLAIMI_INTP_ID_SHIFT) & 
+                                                       IDC_CLAIMI_INTP_ID_MASK;
+    while(intp_identity > 0){
+        interrupts_handle(intp_identity);
+        intp_identity = (aplic_hart[idc_id].claimi >> IDC_CLAIMI_INTP_ID_SHIFT) & 
+                                                       IDC_CLAIMI_INTP_ID_MASK;
     }
-
 }
