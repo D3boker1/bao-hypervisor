@@ -43,9 +43,9 @@ static inline cpuid_t vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu, vcpuid_t vhart)
 
 static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu);
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id); 
-static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id);
-static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id);
-static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id);
+static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, idcid_t idc_id);
+static uint32_t vaplic_get_iforce(struct vcpu *vcpu, idcid_t idc_id);
+static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, idcid_t idc_id);
 
 void vaplic_set_hw(struct vm *vm, irqid_t intp_id){
     struct vaplic * vaplic = &vm->arch.vaplic;
@@ -55,10 +55,10 @@ void vaplic_set_hw(struct vm *vm, irqid_t intp_id){
 }
 
 /**
- * @brief Returns if a given interrupt is associated to the physical source
+ * @brief Returns if a given interrupt is associated to the physical interrupt
  * 
- * @param vcpu virtual cpu running
- * @param intp_id interrupt to evaluate
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt id
  * @return true if is a physical intp
  * @return false if is NOT a physical intp
  */
@@ -71,6 +71,14 @@ static bool vaplic_get_hw(struct vcpu* vcpu, irqid_t intp_id){
     return ret;
 }
 
+/**
+ * @brief Returns if a given interrupt is pending.
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt id
+ * @return true if the interrupt is pending
+ * @return false if the interrupt is NOT pending
+ */
 static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
@@ -80,6 +88,14 @@ static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
+/**
+ * @brief Returns if a given interrupt is active for this domain.
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt id
+ * @return true if the interrupt is active
+ * @return false if the interrupt is NOT active
+ */
 static bool vaplic_get_active(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
@@ -89,6 +105,14 @@ static bool vaplic_get_active(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
+/**
+ * @brief Set a given interrupt as pending
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt id
+ * @return true if interrupt was set pending
+ * @return false if interrupt was NOT set pending
+ */
 static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
@@ -102,6 +126,14 @@ static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
+/**
+ * @brief Returns if a given interrupt is enabled.
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt id
+ * @return true if the interrupt is enabled
+ * @return false if the interrupt is NOT enabled
+ */
 static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
@@ -112,11 +144,12 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
 }
 
 /**
- * @brief Updates the topi register based with the 
+ * @brief Updates the topi register with with the 
  *        highest pend & en interrupt id
  * 
- * @param vcpu 
- * @return irqid_t 
+ * @param vcpu virtual cpu
+ * @return true if topi was updated, requiring the handling of the interrupt
+ * @return false if there is no new interrupt to handle
  */
 static bool vaplic_update_topi(struct vcpu* vcpu){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
@@ -168,6 +201,12 @@ enum {UPDATE_HART_LINE};
 static void vaplic_ipi_handler(uint32_t event, uint64_t data);
 CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
 
+/**
+ * @brief Updates the interrupt line for a single hart
+ * 
+ * @param vcpu virtual cpu
+ * @param vhart_index hart id to update
+ */
 static void vaplic_update_single_hart(struct vcpu* vcpu, vcpuid_t vhart_index){
     vcpuid_t pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, vhart_index);
 
@@ -191,9 +230,12 @@ static void vaplic_update_single_hart(struct vcpu* vcpu, vcpuid_t vhart_index){
 }
 
 /**
- * @brief Update the CPU interrupt line.
+ * @brief Triggers the hart/harts interrupt line update.
  * 
- * @param vcpu 
+ * @param vcpu virtual cpu
+ * @param vhart_index virtual hart to update the interrupt line. 
+ *        If UPDATE_ALL_HARTS were passed, thsi function will trigger
+ *        the interrupt line update to all virtual harts running in this vm.  
  */
 static void vaplic_update_hart_line(struct vcpu* vcpu, int16_t vhart_index) 
 {
@@ -214,8 +256,8 @@ static void vaplic_update_hart_line(struct vcpu* vcpu, int16_t vhart_index)
 /**
  * @brief Processes an incoming event.
  * 
- * @param event the event id
- * @param data
+ * @param event the event id. Only UPDATE_HART_LINE is supported 
+ * @param data has the vcpu id to update the interrupt hart line
  */
 static void vaplic_ipi_handler(uint32_t event, uint64_t data) 
 {
@@ -226,12 +268,12 @@ static void vaplic_ipi_handler(uint32_t event, uint64_t data)
     }
 }
 
-/** APLIC Functions emulation */
+/** APLIC domain functions */
 
 /**
  * @brief Write to domaincfg register a new value.
  * 
- * @param vcpu 
+ * @param vcpu virtual hart
  * @param new_val The new value to write to domaincfg
  */
 static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
@@ -249,7 +291,7 @@ static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
 /**
  * @brief Read from domaincfg
  * 
- * @param vcpu 
+ * @param vcpu virtual hart
  * @return uint32_t domaincfg value 
  */
 static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
@@ -260,11 +302,11 @@ static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
 }
 
 /**
- * @brief Read from a given interrupt sourcecfg register
+ * @brief Read the sourcecfg register of a given interrupt
  * 
- * @param vcpu 
- * @param intp_id Interrupt id to read
- * @return uint32_t 
+ * @param vcpu virtual hart
+ * @param intp_id interrupt ID
+ * @return uint32_t value with the interrupt sourcecfg value
  */
 static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
@@ -279,10 +321,10 @@ static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
 }
 
 /**
- * @brief Write to sourcecfg register of a given interrupt
+ * @brief Write the sourcecfg register of a given interrupt
  * 
- * @param vcpu 
- * @param intp_id interrupt id to write to
+ * @param vcpu virtual hart
+ * @param intp_id interrupt ID
  * @param new_val value to write to sourcecfg
  */
 static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
@@ -330,7 +372,7 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
  * 
  * @param vcpu virtual cpu
  * @param reg regiter index
- * @return uint32_t value with pending bit mapped per bit
+ * @return uint32_t value with pending values bit-mapped
  */
 static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
@@ -348,7 +390,7 @@ static uint32_t vaplic_get_setip(struct vcpu *vcpu, uint8_t reg){
  * 
  * @param vcpu virtual cpu
  * @param reg regiter index
- * @param new_val value with pending bit mapped per bit
+ * @param new_val value with pending interrupts bit-mapped
  */
 static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -373,10 +415,10 @@ static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
 }
 
 /**
- * @brief Set the pending bits for a given interrupt
+ * @brief Set the pending bit for a given interrupt
  * 
  * @param vcpu virtual cpu
- * @param new_val value w/ the interrupt source number
+ * @param new_val interrupt to set the pending bit
  */
 static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -393,7 +435,7 @@ static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
  * 
  * @param vcpu virtual cpu 
  * @param reg  regiter index
- * @param new_val value with intp to be cleared per bit
+ * @param new_val value with interrupts to be cleared per bit
  */
 static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -428,8 +470,6 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
 
 /**
  * @brief Get the rectified input values per source
- *        NOTE: Not implemented as stated! 
- *        TODO: return the pending bits?
  * 
  * @param vcpu virtual cpu 
  * @param reg regiter index
@@ -444,10 +484,10 @@ static uint32_t vaplic_get_in_clrip(struct vcpu *vcpu, uint8_t reg){
 }
 
 /**
- * @brief Clear the pending bits for a given interrupt
+ * @brief Clear the pending bit for a given interrupt
  * 
  * @param vcpu virtual cpu
- * @param new_val value w/ the interrupt source number
+ * @param new_val interrupt to clear the pending bit
  */
 static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -472,7 +512,7 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
  * 
  * @param vcpu virtual cpu
  * @param reg regiter index
- * @return uint32_t value with enabled bit mapped per bit
+ * @return uint32_t value with enabled value bit-mapped
  */
 static uint32_t vaplic_get_setie(struct vcpu *vcpu, uint32_t reg){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
@@ -489,7 +529,7 @@ static uint32_t vaplic_get_setie(struct vcpu *vcpu, uint32_t reg){
  * 
  * @param vcpu virtual cpu
  * @param reg regiter index
- * @param new_val value with enbaled bit mapped per bit
+ * @param new_val value with interrupts to be enabled per bit
  */
 static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -520,10 +560,10 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
 }
 
 /**
- * @brief Set the enabled bits for a given interrupt
+ * @brief Set the enabled bit for a given interrupt
  * 
  * @param vcpu virtual cpu
- * @param new_val value w/ the interrupt source number
+ * @param new_val interrupt to set the enable bit
  */
 static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -545,7 +585,7 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
  * 
  * @param vcpu virtual cpu 
  * @param reg  regiter index
- * @param new_val value with intp to be cleared per bit
+ * @param new_val value with interrupts to be cleared per bit
  */
 static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -573,10 +613,10 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
 }
 
 /**
- * @brief Clear the enabled bits for a given interrupt
+ * @brief Clear the enabled bit for a given interrupt
  * 
  * @param vcpu virtual cpu
- * @param new_val value w/ the interrupt source number
+ * @param new_val interrupt to clear the enable bit
  */
 static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
@@ -596,8 +636,8 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
 /**
  * @brief Write to target register of a given interrupt
  * 
- * @param vcpu 
- * @param intp_id interrupt id to write to
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt ID
  * @param new_val value to write to target
  */
 static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
@@ -657,11 +697,11 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
 }
 
 /**
- * @brief Read from a given interrupt target register
+ * @brief Read target register from a given interrupt
  * 
- * @param vcpu 
- * @param intp_id Interrupt id to read
- * @return uint32_t value with target from intp_id
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt ID
+ * @return uint32_t value with target value
  */
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
@@ -673,16 +713,16 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
-/** IDC Functions emulation */
+/** IDC functions */
 
 /**
- * @brief Set idelivery register for a given idc. Only 0 and 1 are allowed.
+ * @brief Set idelivery register for a given idc. 
  * 
  * @param vcpu virtual CPU
  * @param idc_id idc identifier
- * @param new_val new value to write in iforce
+ * @param new_val new value to write in idelivery. Only 0 and 1 are allowed.
  */
-static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
+static void vaplic_set_idelivery(struct vcpu *vcpu, idcid_t idc_id, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     new_val = (new_val & 0x1);
@@ -703,7 +743,7 @@ static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t ne
  * @param idc_id idc identifier
  * @return uint32_t value read from idelivery
  */
-static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num) ret = bitmap_get( vaplic->idelivery, idc_id);
@@ -711,13 +751,13 @@ static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id){
 }
 
 /**
- * @brief Set iforce register for a given idc. Only 0 and 1 are allowed.
+ * @brief Set iforce register for a given idc. 
  * 
  * @param vcpu virtual CPU
  * @param idc_id idc identifier
- * @param new_val new value to write in iforce
+ * @param new_val new value to write in iforce. Only 0 and 1 are allowed.
  */
-static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
+static void vaplic_set_iforce(struct vcpu *vcpu, idcid_t idc_id, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     new_val = (new_val & 0x1);
@@ -732,13 +772,13 @@ static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_v
 }
 
 /**
- * @brief Read idelivery register from a given idc.
+ * @brief Read iforce register from a given idc.
  * 
  * @param vcpu virtual CPU
  * @param idc_id idc identifier
  * @return uint32_t value read from iforce
  */
-static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_iforce(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num) ret = bitmap_get(vaplic->iforce, idc_id);
@@ -752,7 +792,7 @@ static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id){
  * @param idc_id idc identifier
  * @param new_val new value to write in ithreshold
  */
-static void vaplic_set_ithreshold(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
+static void vaplic_set_ithreshold(struct vcpu *vcpu, idcid_t idc_id, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (idc_id < vaplic->idc_num){
@@ -769,7 +809,7 @@ static void vaplic_set_ithreshold(struct vcpu *vcpu, uint16_t idc_id, uint32_t n
  * @param idc_id idc identifier
  * @return uint32_t value read from ithreshold
  */
-static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num) ret = vaplic->ithreshold[idc_id];
@@ -783,7 +823,7 @@ static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id){
  * @param idc_id idc identifier
  * @return uint32_t value read from topi
  */
-static uint32_t vaplic_get_topi(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_topi(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num) ret = vaplic->topi_claimi[idc_id];
@@ -800,7 +840,7 @@ static uint32_t vaplic_get_topi(struct vcpu *vcpu, uint16_t idc_id){
  * @param idc_id idc identifier
  * @return 32 bit value read from virt claimi
  */
-static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_claimi(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic* vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
@@ -816,6 +856,8 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
     spin_unlock(&vaplic->lock);
     return ret;
 }
+
+/** VAPLIC functions emulation */
 
 /**
  * @brief domaincfg register access emulation function 
