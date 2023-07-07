@@ -94,8 +94,8 @@ void aplic_init(void)
 void aplic_idc_init(void){
     uint32_t idc_index = cpu()->id;
     aplic_hart[idc_index].ithreshold = APLIC_IDC_ITHRESHOLD_EN_ALL;  
-    aplic_hart[idc_index].idelivery = APLIC_ENABLE_IDELIVERY;
     aplic_hart[idc_index].iforce = APLIC_DISABLE_IFORCE;
+    aplic_hart[idc_index].idelivery = APLIC_ENABLE_IDELIVERY;
 }
 
 /** Domain functions */
