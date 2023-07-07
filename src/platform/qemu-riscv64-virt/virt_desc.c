@@ -23,9 +23,9 @@ struct platform platform = {
 
     .arch = {
         #if (IRQC == PLIC)
-        .plic_base = 0xc000000,        
+        .irqc.plic.base = 0xc000000,        
         #elif (IRQC == APLIC)
-        .plic_base = 0xd000000,
+        .irqc.aia.aplic.base = 0xd000000,
         #else 
         #error "unknown IRQC type " IRQC
         #endif

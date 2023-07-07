@@ -12,7 +12,19 @@
 #define APLIC (2)
 
 struct arch_platform {
-    paddr_t plic_base;
+    union {
+        struct {
+            paddr_t base;
+        } plic;
+        struct {
+            struct {
+                paddr_t base;
+            } aplic;
+            struct {
+                paddr_t base;
+            } imsic;
+        } aia;
+    } irqc;
 };
 
 #endif /* __ARCH_PLATFORM_H__ */

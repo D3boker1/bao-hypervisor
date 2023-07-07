@@ -1004,7 +1004,7 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
         }
         return true;
     }
-    uint32_t addr = acc->addr - platform.arch.plic_base + APLIC_IDC_OFF;
+    uint32_t addr = acc->addr - platform.arch.irqc.aia.aplic.base + APLIC_IDC_OFF;
     addr = addr - (sizeof(aplic_hart[0]) * idc_id);
     switch (addr & 0x1F) {
         case APLIC_IDC_IDELIVERY_OFF:
@@ -1036,7 +1036,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
 {
     if (cpu()->id == vm->master) {
         vm->arch.virqc.aplic_domain_emul = (struct emul_mem) {
-            .va_base = arch_platform->plic_base,
+            .va_base = arch_platform->irqc.aia.aplic.base,
             .size = sizeof(struct aplic_global_hw),
             .handler = vaplic_domain_emul_handler
         };
@@ -1044,7 +1044,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
         vm_emul_add_mem(vm, &vm->arch.virqc.aplic_domain_emul);
 
         vm->arch.virqc.aplic_idc_emul = (struct emul_mem) {
-            .va_base = arch_platform->plic_base + APLIC_IDC_OFF,
+            .va_base = arch_platform->irqc.aia.aplic.base + APLIC_IDC_OFF,
             .size = sizeof(struct aplic_hart_hw)*APLIC_PLAT_IDC_NUM,
             .handler = vaplic_idc_emul_handler
         };
