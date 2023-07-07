@@ -261,15 +261,6 @@ void aplic_set_target(irqid_t intp_id, uint32_t val);
 uint32_t aplic_get_target(irqid_t intp_id);
 
 /**
- * @brief Useful for testing. Seting this register forces an interrupt to
- *        be asserted to the corresponding hart
- * 
- * @param idc_id IDC to force an interruption
- * @param en value to be written
- */
-void aplic_idc_set_iforce(idcid_t idc_id, bool en);
-
-/**
  * @brief Returns the highest pending and enabled interrupt.
  * 
  * Claimi has the same value as topi. However, reading claimi has the side 

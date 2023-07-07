@@ -19,7 +19,6 @@
 #define APLIC_IDC_ITHRESHOLD_EN_ALL     (0)
 #define APLIC_IDC_ITHRESHOLD_DISBL_ALL  (1)
 
-/** APLIC public data */
 volatile struct aplic_global_hw *aplic_global;
 volatile struct aplic_hart_hw *aplic_hart;
 
@@ -28,7 +27,6 @@ bool inline aplic_msi_mode(void)
     return (aplic_global->domaincfg & APLIC_DOMAINCFG_DM) && APLIC_DOMAINCFG_DM;
 }
 
-/** Initialization Functions */
 void aplic_init(void)
 {
     /** Maps APLIC device */
@@ -72,24 +70,19 @@ void aplic_idc_init(void){
     aplic_hart[idc_index].idelivery = APLIC_ENABLE_IDELIVERY;
 }
 
-/** Domain functions */
-void aplic_set_sourcecfg(irqid_t int_id, uint32_t val)
+void aplic_set_sourcecfg(irqid_t intp_id, uint32_t val)
 {
-    uint32_t real_int_id = int_id - 1;
-    aplic_global->sourcecfg[real_int_id] = val & APLIC_SOURCECFG_SM_MASK;
+    aplic_global->sourcecfg[intp_id - 1] = val & APLIC_SOURCECFG_SM_MASK;
 }
 
-uint32_t aplic_get_sourcecfg(irqid_t int_id)
+uint32_t aplic_get_sourcecfg(irqid_t intp_id)
 {
-    uint32_t ret = 0;
-    uint32_t real_int_id = int_id - 1;
-    ret = aplic_global->sourcecfg[real_int_id];
-    return ret;
+    return aplic_global->sourcecfg[intp_id - 1];
 }
 
-void aplic_set_pend(irqid_t int_id)
+void aplic_set_pend(irqid_t intp_id)
 {
-    aplic_global->setipnum = int_id;
+    aplic_global->setipnum = intp_id;
 }
 
 void aplic_set32_pend(uint8_t reg_indx, uint32_t reg_val)
@@ -97,10 +90,10 @@ void aplic_set32_pend(uint8_t reg_indx, uint32_t reg_val)
     aplic_global->setip[reg_indx] = reg_val;
 }
 
-bool aplic_get_pend(irqid_t int_id)
+bool aplic_get_pend(irqid_t intp_id)
 {
-    uint32_t reg_indx = int_id / 32;
-    uint32_t intp_to_pend_mask = (1U << (int_id % 32));
+    uint32_t reg_indx = intp_id / 32;
+    uint32_t intp_to_pend_mask = (1U << (intp_id % 32));
 
     return (aplic_global->setip[reg_indx] & intp_to_pend_mask) != 0;
 }
@@ -110,9 +103,9 @@ uint32_t aplic_get32_pend(uint8_t reg_indx)
     return aplic_global->setip[reg_indx];
 }
 
-void aplic_clr_pend(irqid_t int_id)
+void aplic_clr_pend(irqid_t intp_id)
 {
-    aplic_global->clripnum = int_id;
+    aplic_global->clripnum = intp_id;
 }
 
 uint32_t aplic_get_inclrip(uint8_t reg_indx)
@@ -120,9 +113,9 @@ uint32_t aplic_get_inclrip(uint8_t reg_indx)
     return aplic_global->in_clrip[reg_indx];
 }
 
-void aplic_set_enbl(irqid_t int_id)
+void aplic_set_enbl(irqid_t intp_id)
 {
-    aplic_global->setienum = int_id;
+    aplic_global->setienum = intp_id;
 }
 
 void aplic_set32_enbl(uint8_t reg_indx, uint32_t reg_val)
@@ -130,16 +123,16 @@ void aplic_set32_enbl(uint8_t reg_indx, uint32_t reg_val)
     aplic_global->setie[reg_indx] = reg_val;
 }
 
-bool aplic_get_enbl(irqid_t int_id){
-    uint32_t reg_indx = int_id / 32;
-    uint32_t intp_to_pend_mask = (1U << (int_id % 32));
+bool aplic_get_enbl(irqid_t intp_id){
+    uint32_t reg_indx = intp_id / 32;
+    uint32_t intp_to_pend_mask = (1U << (intp_id % 32));
 
     return (aplic_global->setie[reg_indx] & intp_to_pend_mask) != 0;
 }
 
-void aplic_clr_enbl(irqid_t int_id)
+void aplic_clr_enbl(irqid_t intp_id)
 {
-    aplic_global->clrienum = int_id;
+    aplic_global->clrienum = intp_id;
 }
 
 void aplic_clr32_enbl(uint8_t reg_indx, uint32_t reg_val)
@@ -147,47 +140,27 @@ void aplic_clr32_enbl(uint8_t reg_indx, uint32_t reg_val)
     aplic_global->clrie[reg_indx] = reg_val;
 }
 
-void aplic_set_target(irqid_t int_id, uint32_t val)
+void aplic_set_target(irqid_t intp_id, uint32_t val)
 {
-    uint32_t real_int_id = int_id - 1;
     uint32_t eiid = val & APLIC_TARGET_EEID_MASK;
     uint32_t hart_index = (val >> APLIC_TARGET_HART_IDX_SHIFT);
     uint32_t guest_index = (val >> APLIC_TARGET_GUEST_IDX_SHIFT) 
                             & APLIC_TARGET_GUEST_INDEX_MASK;
     
-    /** Evaluate in what delivery mode the domain is configured*/
-    /** Direct Mode*/
     if(!aplic_msi_mode()){
         val &= APLIC_TARGET_DIRECT_MASK;
-        aplic_global->target[real_int_id] = val;
-    }
-    /** MSI Mode*/
-    else{ 
+        aplic_global->target[intp_id - 1] = val;
+    } else { 
         val &= APLIC_TARGET_MSI_MASK;
         if((eiid > 0) && (hart_index < PLAT_CPU_NUM) && (guest_index <= 1)){
-            aplic_global->target[real_int_id] = val;
+            aplic_global->target[intp_id - 1] = val;
         }
     }
 }
 
-uint32_t aplic_get_target(irqid_t int_id)
+uint32_t aplic_get_target(irqid_t intp_id)
 {
-    uint32_t real_int_id = int_id - 1;
-    uint32_t ret = 0;
-    ret = aplic_global->target[real_int_id];
-    return ret;
-}
-
-/** IDC functions */
-void aplic_idc_set_iforce(idcid_t idc_id, bool en)
-{
-    if(idc_id < APLIC_DOMAIN_NUM_HARTS) {
-        if (en){
-            aplic_hart[idc_id].iforce = APLIC_ENABLE_IFORCE;
-        }else{
-            aplic_hart[idc_id].iforce = APLIC_DISABLE_IFORCE;
-        }
-    }
+    return aplic_global->target[intp_id - 1];
 }
 
 uint32_t aplic_idc_get_claimi(idcid_t idc_id)
