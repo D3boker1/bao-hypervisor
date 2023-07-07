@@ -100,99 +100,129 @@ extern volatile struct aplic_hart_hw *aplic_hart;
  */
 bool aplic_msi_mode(void);
 
-/** Initialization Functions */
 /**
- * @brief Initialize the aplic domain.
+ * @brief Initialize the APLIC domain.
  * 
  */
 void aplic_init(void);
 
 /**
- * @brief Initialize the aplic IDCs. 
- * The IDC component is the closest to the cpu.
+ * @brief Initialize the APLIC IDCs. 
  * 
  */
 void aplic_idc_init(void);
 
-/** Domain functions */
 /**
- * @brief Write to aplic's sourcecfg register
+ * @brief Write to APLIC's sourcecfg register
  * 
- * @param int_id interruption ID identifies the interrupt to be configured/read.
+ * @param intp_id interruption ID identifies the interrupt to be configured.
  * @param val Value to be written into sourcecfg
  */
-void aplic_set_sourcecfg(irqid_t int_id, uint32_t val);
+void aplic_set_sourcecfg(irqid_t intp_id, uint32_t val);
 
 /**
- * @brief Read from aplic's sourcecfg register
+ * @brief Read from APLIC's sourcecfg register
  * 
- * @param int_id interruption ID identifies the interrupt to be configured/read.
- * @return uint32_t 32 bit value containing interrupt int_id's configuration.
+ * @param intp_id interruption ID identifies the interrupt to be read.
+ * @return a 32 bit value containing interrupt sourcecfg configuration.
  */
-uint32_t aplic_get_sourcecfg(irqid_t int_id);
+uint32_t aplic_get_sourcecfg(irqid_t intp_id);
 
 /**
- * @brief Set a given interrupt as pending, using setipnum register.
- * This should be faster than aplic_set_pend.
+ * @brief Set a given interrupt as pending. 
  * 
- * @param int_id Interrupt to be set as pending
+ * @param intp_id Interrupt to be set as pending
  */
-void aplic_set_pend(irqid_t int_id);
+void aplic_set_pend(irqid_t intp_id);
 
+/**
+ * @brief Potentially modifies the pending bits for interrupt
+ *        sources reg_indx × 32 through reg_indx × 32 + 31.
+ * 
+ * @param reg_indx register index
+ * @param reg_val register value to be written.
+ */
 void aplic_set32_pend(uint8_t reg_indx, uint32_t reg_val);
 
 /**
  * @brief Read the pending value of a given interrut
  * 
- * @param int_id interrupt to read from
- * @return true if interrupt is pended
- * @return false if interrupt is NOT pended
+ * @param intp_id interrupt to read from
+ * @return true if interrupt is pending
+ * @return false if interrupt is NOT pending
  */
-bool aplic_get_pend(irqid_t int_id);
+bool aplic_get_pend(irqid_t intp_id);
 
+/**
+ * @brief Reads the pending bits for interrupt sources 
+ *        reg_indx × 32 through reg_indx × 32 + 31. 
+ * 
+ * @param reg_indx register index
+ * @return a 32 bit value containing interrupts pending state for reg_indx.
+ */
 uint32_t aplic_get32_pend(uint8_t reg_indx);
+
 /**
  * @brief Clear a pending bit from a inetrrupt writting to in_clripnum.
- * Should be faster than aplic_set_inclrip.
  *  
- * @param int_id interrupt to clear the pending bit from
+ * @param intp_id interrupt to clear the pending bit from
  */
 void aplic_clr_pend(irqid_t intp_id);
 
 /**
- * @brief Read the current rectified value for a given interrupt
+ * @brief Read the current rectified value for interrupt sources 
+ *        reg_indx × 32 through reg_indx × 32 + 31. 
  * 
- * @param int_id interrupt to read from
- * @return true 
- * @return false 
+ * @param reg_indx register index
+ * @return a 32 bit value containing interrupts rectified state for reg_indx.
  */
 uint32_t aplic_get_inclrip(uint8_t reg_indx);
 
 /**
- * @brief Enable a given interrupt writting to setienum register
- * Should be faster than aplic_set_ie 
+ * @brief Enable a given interrupt
  * 
- * @param int_id Interrupt to be enabled
+ * @param intp_id interrupt to be enabled
  */
-void aplic_set_enbl(irqid_t int_id);
+void aplic_set_enbl(irqid_t intp_id);
 
+/**
+ * @brief Modifies the enable bits for interrupt
+ *        sources reg_indx × 32 through reg_indx × 32 + 31.
+ * 
+ * @param reg_indx register index
+ * @param reg_val register value to be written.
+ */
 void aplic_set32_enbl(uint8_t reg_indx, uint32_t reg_val);
 
-bool aplic_get_enbl(irqid_t int_id);
 /**
- * @brief Clear enable bit be writting to clrie register of a given interrupt. 
- * It should be faster than aplic_set_clrie 
+ * @brief Read the enable value of a given interrut
  * 
- * @param int_id Interrupt to clear the enable bit
+ * @param intp_id interrupt to read from
+ * @return true if interrupt is enabled
+ * @return false if interrupt is NOT enbaled
  */
-void aplic_clr_enbl(irqid_t int_id);
+bool aplic_get_enbl(irqid_t intp_id);
 
+/**
+ * @brief Disable a given interrupt 
+ * 
+ * @param intp_id Interrupt to disable
+ */
+void aplic_clr_enbl(irqid_t intp_id);
+
+/**
+ * @brief Modifies the enable bits for interrupt
+ *        sources reg_indx × 32 through reg_indx × 32 + 31.
+ * 
+ * @param reg_indx register index
+ * @param reg_val register value to be written.
+ */
 void aplic_clr32_enbl(uint8_t reg_indx, uint32_t reg_val);
 
 /**
  * @brief Write to register target (see AIA spec 0.3.2 section 4.5.16)
  * 
- * @param int_id Interrupt to configure the target options
+ * @param intp_id Interrupt to configure the target options
  * @param val Value to be written in target register
  * 
  * If domaincfg.DM = 0, target have the format:
@@ -216,20 +246,19 @@ void aplic_clr32_enbl(uint8_t reg_indx, uint32_t reg_val);
  * |           |             | value for MSIs                                 |
  * +-----------+-------------+------------------------------------------------+
  */
-void aplic_set_target(irqid_t int_id, uint32_t val);
+void aplic_set_target(irqid_t intp_id, uint32_t val);
 
 /**
  * @brief Read the target configurations for a given interrupt
  * 
- * @param int_id Interrupt to read from
- * @return uint32_t value with the requested data
+ * @param intp_id Interrupt to read from
+ * @return a 32 bit value with the target data
  */
-uint32_t aplic_get_target(irqid_t int_id);
+uint32_t aplic_get_target(irqid_t intp_id);
 
-/** IDC functions */
 /**
  * @brief Useful for testing. Seting this register forces an interrupt to
- * be asserted to the corresponding hart
+ *        be asserted to the corresponding hart
  * 
  * @param idc_id IDC to force an interruption
  * @param en value to be written
@@ -237,15 +266,16 @@ uint32_t aplic_get_target(irqid_t int_id);
 void aplic_idc_set_iforce(idcid_t idc_id, bool en);
 
 /**
- * @brief As the same value as topi. However, reading claimi has the side effect
- * of clearing the pending bit for the reported inetrrupt identity.
+ * @brief Returns the highest pending and enabled interrupt.
+ * 
+ * Claimi has the same value as topi. However, reading claimi has the side 
+ * effect of clearing the pending bit for the reported interrupt identity.
  * 
  * @param idc_id IDC to read and clear the pending-bit the highest-priority
  * @return uint32_t returns the interrupt identity and interrupt priority.
  */
 uint32_t aplic_idc_get_claimi(idcid_t idc_id);
 
-/** APLIC Interrupt handler */
 /**
  * @brief Handles an incomming interrupt in irq controller.
  * 
