@@ -12,7 +12,7 @@
 #include <bitmap.h>
 #include <emul.h>
 
-struct virqc {
+struct vplic {
     spinlock_t lock;
     size_t cntxt_num;
     BITMAP_ALLOC(hw, PLIC_MAX_INTERRUPTS);

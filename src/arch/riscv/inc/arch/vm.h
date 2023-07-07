@@ -59,8 +59,14 @@ struct arch_vm_platform {
 };
 
 struct vm_arch {
-    struct virqc virqc;
-};
+    #if (IRQC == PLIC)
+    struct vplic vplic;       
+    #elif ((IRQC == APLIC) || (IRQC == AIA))
+    struct vaplic vaplic;
+    #else 
+    #error "unknown IRQC type " IRQC
+    #endif
+    };
 
 struct vcpu_arch {
     vcpuid_t hart_id;
