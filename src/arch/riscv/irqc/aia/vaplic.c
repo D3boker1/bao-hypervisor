@@ -829,8 +829,7 @@ static void vaplic_emul_target_access(struct emul_access *acc){
     }
 }
 
-static void vaplic_emul_idelivery_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
+static void vaplic_emul_idelivery_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_idelivery(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -838,8 +837,7 @@ static void vaplic_emul_idelivery_access(struct emul_access *acc){
     }
 }
 
-static void vaplic_emul_iforce_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
+static void vaplic_emul_iforce_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_iforce(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -847,8 +845,7 @@ static void vaplic_emul_iforce_access(struct emul_access *acc){
     }
 }
 
-static void vaplic_emul_ithreshold_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
+static void vaplic_emul_ithreshold_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_ithreshold(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
     } else {
@@ -856,16 +853,12 @@ static void vaplic_emul_ithreshold_access(struct emul_access *acc){
     }
 }
 
-static void vaplic_emul_topi_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
-
+static void vaplic_emul_topi_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) return;
     vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_topi(cpu()->vcpu, idc_id));
 }
 
-static void vaplic_emul_claimi_access(struct emul_access *acc){
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
-
+static void vaplic_emul_claimi_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) return;
     vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_claimi(cpu()->vcpu, idc_id));
 }
