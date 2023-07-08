@@ -44,9 +44,9 @@ static inline int vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu, vcpuid_t vhart){
 
 static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu);
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id); 
-static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id);
-static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id);
-static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id);
+static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, idcid_t idc_id);
+static uint32_t vaplic_get_iforce(struct vcpu *vcpu, idcid_t idc_id);
+static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, idcid_t idc_id);
 
 void vaplic_set_hw(struct vm *vm, irqid_t intp_id)
 {
@@ -671,7 +671,7 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
  * @param idc_id idc identifier
  * @param new_val new value to write in iforce
  */
-static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
+static void vaplic_set_idelivery(struct vcpu *vcpu, idcid_t idc_id, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     new_val = (new_val & 0x1);
@@ -693,7 +693,7 @@ static void vaplic_set_idelivery(struct vcpu *vcpu, uint16_t idc_id, uint32_t ne
  * @param idc_id idc identifier
  * @return uint32_t value read from idelivery
  */
-static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num) ret = bitmap_get( vaplic->idelivery, idc_id);
@@ -707,7 +707,7 @@ static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, uint16_t idc_id){
  * @param idc_id idc identifier
  * @param new_val new value to write in iforce
  */
-static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
+static void vaplic_set_iforce(struct vcpu *vcpu, idcid_t idc_id, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     new_val = (new_val & 0x1);
@@ -729,7 +729,7 @@ static void vaplic_set_iforce(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_v
  * @param idc_id idc identifier
  * @return uint32_t value read from iforce
  */
-static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_iforce(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num) ret = bitmap_get(vaplic->iforce, idc_id);
@@ -743,7 +743,7 @@ static uint32_t vaplic_get_iforce(struct vcpu *vcpu, uint16_t idc_id){
  * @param idc_id idc identifier
  * @param new_val new value to write in ithreshold
  */
-static void vaplic_set_ithreshold(struct vcpu *vcpu, uint16_t idc_id, uint32_t new_val){
+static void vaplic_set_ithreshold(struct vcpu *vcpu, idcid_t idc_id, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (idc_id < vaplic->idc_num){
@@ -761,7 +761,7 @@ static void vaplic_set_ithreshold(struct vcpu *vcpu, uint16_t idc_id, uint32_t n
  * @param idc_id idc identifier
  * @return uint32_t value read from ithreshold
  */
-static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num) ret = vaplic->ithreshold[idc_id];
@@ -775,7 +775,7 @@ static uint32_t vaplic_get_ithreshold(struct vcpu *vcpu, uint16_t idc_id){
  * @param idc_id idc identifier
  * @return uint32_t value read from topi
  */
-static uint32_t vaplic_get_topi(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_topi(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num) ret = vaplic->topi_claimi[idc_id];
@@ -789,7 +789,7 @@ static uint32_t vaplic_get_topi(struct vcpu *vcpu, uint16_t idc_id){
  * @param idc_id idc identifier
  * @return uint32_t value read from claimi
  */
-static uint32_t vaplic_get_claimi(struct vcpu *vcpu, uint16_t idc_id){
+static uint32_t vaplic_get_claimi(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (idc_id < vaplic->idc_num){
