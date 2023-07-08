@@ -106,6 +106,27 @@ static bool vaplic_get_active(struct vcpu *vcpu, irqid_t intp_id){
 }
 
 /**
+ * @brief Set a given interrupt as pending
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt id
+ * @return true if interrupt was set pending
+ * @return false if interrupt was NOT set pending
+ */
+static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
+    struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+    bool ret = false;
+
+    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS && 
+        !vaplic_get_pend(vcpu, intp_id) &&
+        vaplic_get_active(vcpu, intp_id)){
+        BIT32_SET_INTP(vaplic->ip, intp_id);
+        ret = true;
+    }
+    return ret;
+}
+
+/**
  * @brief Emulates the notifier aplic module.
  *        (02/11/2022): computes the next pending bit.
  *        Only direct mode is supported. 
@@ -904,18 +925,18 @@ static void vaplic_emul_claimi_access(struct emul_access *acc, idcid_t idc_id){
     vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_claimi(cpu()->vcpu, idc_id));
 }
 
-// ============================================================================
-void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
-{
+/**
+ * @brief Injects a given interrupt into a given vcpu 
+ * 
+ * @param vcpu vcpu to inject the interrupt
+ * @param intp_id interrupt unique id
+ */
+void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+
     spin_lock(&vaplic->lock);
-    
-    /** Intp has a valid ID and the virtual interrupt is not pending*/
-    if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
-        if(vaplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_INACTIVE &&
-           vaplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_DETACH){
-            BIT32_SET_INTP(vaplic->ip, intp_id);
-        }
+    /** If the intp was successfully injected, update the heart line. */
+    if (vaplic_set_pend(vcpu, intp_id)){
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
