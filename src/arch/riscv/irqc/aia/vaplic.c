@@ -20,6 +20,10 @@
 #define BIT32_CLR_INTP(reg, intp_id) (reg[intp_id/32] =\
                                       bit32_clear(reg[intp_id/32], intp_id%32))
 
+#define ADDR_INSIDE_RANGE(addr, start, end)\
+                         (addr >= offsetof(struct aplic_global_hw, start) &&\
+                          addr  < offsetof(struct aplic_global_hw, end))
+
 /**
  * @brief Converts a virtual cpu id into the physical one
  * 
@@ -883,6 +887,23 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     spin_unlock(&vaplic->lock);
 }
 
+static bool vaplic_domain_emul_reserved (uint16_t addr) {
+    bool ret = false;
+    if (ADDR_INSIDE_RANGE(addr, reserved1, setip)       ||
+        ADDR_INSIDE_RANGE(addr, reserved2, setipnum)    ||
+        ADDR_INSIDE_RANGE(addr, reserved3, in_clrip)    ||
+        ADDR_INSIDE_RANGE(addr, reserved4, clripnum)    ||
+        ADDR_INSIDE_RANGE(addr, reserved5, setie)       ||
+        ADDR_INSIDE_RANGE(addr, reserved6, setienum)    ||
+        ADDR_INSIDE_RANGE(addr, reserved7, clrie)       ||
+        ADDR_INSIDE_RANGE(addr, reserved8, clrienum)    ||
+        ADDR_INSIDE_RANGE(addr, reserved9, setipnum_le) ||
+        ADDR_INSIDE_RANGE(addr, reserved10, genmsi)){
+        ret = true;
+    }
+    return ret;
+}
+
 /**
  * @brief Function to handle writes (or reads) to (from) domain structure.
  * 
@@ -892,71 +913,76 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
  */
 static bool vaplic_domain_emul_handler(struct emul_access *acc)
 {
+    uint16_t emul_addr = 0;
+    bool read_only_zero = false;
+
     // only allow aligned word accesses
     if (acc->width != 4 || acc->addr & 0x3) return false;
 
-    switch (acc->addr & 0xffff) {
-        case APLIC_DOMAIN_OFF:
-            vaplic_emul_domaincfg_access(acc);
-            break;
-        case APLIC_SOURCECFG_OFF ... APLIC_SOURCECFG_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
-            vaplic_emul_srccfg_access(acc);
-            break;
-        // case APLIC_MMSIADDRCFG_OFF:
-        //     vaplic_emul_mmsiaddrcfg_access(acc);
-        //     break;
-        // case APLIC_MMSIADDRCFGH_OFF:
-        //     vaplic_emul_mmsiaddrcfgh_access(acc);
-        //     break;
-        // case APLIC_SMSIADDRCFG_OFF:
-        //     vaplic_emul_smsiaddrcfg_access(acc);
-        //     break;
-        // case APLIC_SMSIADDRCFGH_OFF:
-        //     vaplic_emul_smsiaddrcfgh_access(acc);
-        //     break;
-        case APLIC_SETIP_OFF ... APLIC_SETIP_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
-            vaplic_emul_setip_access(acc);
-            break;
-        case APLIC_SETIPNUM_OFF:
-            vaplic_emul_setipnum_access(acc);
-            break;
-        case APLIC_IN_CLRIP_OFF ... APLIC_IN_CLRIP_OFF+((APLIC_NUM_CLRIx_REGS-1)*4):
-            vaplic_emul_in_clrip_access(acc);
-            break;
-        case APLIC_CLRIPNUM_OFF:
-            vaplic_emul_clripnum_access(acc);
-            break;
-        case APLIC_SETIE_OFF ... APLIC_SETIE_OFF+((APLIC_NUM_SETIx_REGS-1)*4):
-            vaplic_emul_setie_access(acc);
-            break;
-        case APLIC_SETIENUM_OFF:
-            vaplic_emul_setienum_access(acc);
-            break;
-        case APLIC_CLRIE_OFF ... APLIC_CLRIE_OFF+((APLIC_NUM_CLRIx_REGS-1)*4):
-            vaplic_emul_clrie_access(acc);
-            break;
-        case APLIC_CLRIENUM_OFF:
-            vaplic_emul_clrienum_access(acc);
-            break;
-        // case APLIC_SETIPNUM_LE_OFF:
-        //     vaplic_emul_setipnum_le_access(acc);
-        //     break;
-        // case APLIC_SETIPNUM_BE_OFF:
-        //     vaplic_emul_setipnum_be_access(acc);
-        //     break;
-        // case APLIC_GENMSI_OFF:
-        //     vaplic_emul_genmsi_access(acc);
-        //     break;
-        case APLIC_TARGET_OFF ...APLIC_TARGET_OFF+((APLIC_MAX_INTERRUPTS-2)*4):
-            vaplic_emul_target_access(acc);
-            break;
-        default:
-            if(!acc->write) {
-                vcpu_writereg(cpu()->vcpu, acc->reg, 0);
-            }
-            break;
+    emul_addr = (acc->addr - 
+                cpu()->vcpu->vm->arch.vaplic.aplic_domain_emul.va_base) & 
+                0x3fff;
+
+    if (vaplic_domain_emul_reserved(emul_addr)){
+        read_only_zero = true;
+    } else {
+        switch (emul_addr >> 12){
+            case 0:
+                if (emul_addr == offsetof(struct aplic_global_hw, domaincfg)) {
+                    vaplic_emul_domaincfg_access(acc);
+                } else {
+                    vaplic_emul_srccfg_access(acc);
+                }
+                break;
+            case 1:
+                switch (emul_addr >> 7){
+                case offsetof(struct aplic_global_hw, setip) >> 7:
+                    vaplic_emul_setip_access(acc);
+                    break;
+                case offsetof(struct aplic_global_hw, setipnum) >> 7:
+                    vaplic_emul_setipnum_access(acc);
+                    break;
+                case offsetof(struct aplic_global_hw, in_clrip) >> 7:
+                    vaplic_emul_in_clrip_access(acc);
+                    break;
+                case offsetof(struct aplic_global_hw, clripnum) >> 7:
+                    vaplic_emul_clripnum_access(acc);
+                    break;
+                case offsetof(struct aplic_global_hw, setie) >> 7:
+                    vaplic_emul_setie_access(acc);
+                    break;
+                case offsetof(struct aplic_global_hw, setienum) >> 7:
+                    vaplic_emul_setienum_access(acc);
+                    break;
+                case offsetof(struct aplic_global_hw, clrie) >> 7:
+                    vaplic_emul_clrie_access(acc);
+                    break;
+                case offsetof(struct aplic_global_hw, clrienum) >> 7:
+                    vaplic_emul_clrienum_access(acc);
+                    break;
+                default:
+                    read_only_zero = true;
+                    break;
+                }
+                break;
+            case 3:
+                if (emul_addr == offsetof(struct aplic_global_hw, genmsi)) {
+                    read_only_zero = true;
+                } else {
+                    vaplic_emul_target_access(acc);
+                }
+                break;
+            default:
+                read_only_zero = true;
+                break;
+        }
     }
 
+    if (read_only_zero){
+        if(!acc->write) {
+            vcpu_writereg(cpu()->vcpu, acc->reg, 0);
+        }
+    }
     return true;
 }
 
@@ -970,32 +996,37 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
 static bool vaplic_idc_emul_handler(struct emul_access *acc)
 {
     // only allow aligned word accesses
-    if (acc->width > 4 || acc->addr & 0x3) return false;
+    if (acc->width != 4 || acc->addr & 0x3) return false;
 
-    int idc_id = ((acc->addr - APLIC_IDC_OFF) >> 5) & 0x3ff;
+    uint32_t addr = acc->addr;
+    idcid_t idc_id = ((acc->addr - APLIC_IDC_OFF - 
+            cpu()->vcpu->vm->arch.vaplic.aplic_domain_emul.va_base) >> 5) 
+            & APLIC_MAX_NUM_HARTS_MAKS;
+
     if(!(idc_id < cpu()->vcpu->vm->arch.vaplic.idc_num)){
         if(!acc->write) {
             vcpu_writereg(cpu()->vcpu, acc->reg, 0);
         }
         return true;
     }
-    uint32_t addr = acc->addr - platform.arch.irqc.aia.aplic.base + APLIC_IDC_OFF;
-    addr = addr - (sizeof(aplic_hart[0]) * idc_id);
+
+    addr = addr - cpu()->vcpu->vm->arch.vaplic.aplic_idc_emul.va_base;
+    addr = addr - (sizeof(struct aplic_hart_hw) * idc_id);
     switch (addr & 0x1F) {
-        case APLIC_IDC_IDELIVERY_OFF:
-            vaplic_emul_idelivery_access(acc);
+        case offsetof(struct aplic_hart_hw, idelivery):
+            vaplic_emul_idelivery_access(acc, idc_id);
             break;
-        case APLIC_IDC_IFORCE_OFF:
-            vaplic_emul_iforce_access(acc);
+        case offsetof(struct aplic_hart_hw, iforce):
+            vaplic_emul_iforce_access(acc, idc_id);
             break;
-        case APLIC_IDC_ITHRESHOLD_OFF:
-            vaplic_emul_ithreshold_access(acc);
+        case offsetof(struct aplic_hart_hw, ithreshold):
+            vaplic_emul_ithreshold_access(acc, idc_id);
             break;
-        case APLIC_IDC_TOPI_OFF:
-            vaplic_emul_topi_access(acc);
+        case offsetof(struct aplic_hart_hw, topi):
+            vaplic_emul_topi_access(acc, idc_id);
             break;
-        case APLIC_IDC_CLAIMI_OFF:
-            vaplic_emul_claimi_access(acc);
+        case offsetof(struct aplic_hart_hw, claimi):
+            vaplic_emul_claimi_access(acc, idc_id);
             break;
         default:
             if(!acc->write) {
@@ -1003,7 +1034,6 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
             }
             break;
     }
-
     return true;
 }
 
