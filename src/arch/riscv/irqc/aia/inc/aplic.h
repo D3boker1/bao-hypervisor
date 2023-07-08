@@ -132,6 +132,15 @@ uint32_t aplic_get_sourcecfg(irqid_t intp_id);
 void aplic_set_pend(irqid_t intp_id);
 
 /**
+ * @brief Potentially modifies the pending bits for interrupt
+ *        sources reg_indx × 32 through reg_indx × 32 + 31.
+ * 
+ * @param reg_indx register index
+ * @param reg_val register value to be written.
+ */
+void aplic_set32_pend(uint8_t reg_indx, uint32_t reg_val);
+
+/**
  * @brief Read the pending value of a given interrut
  * 
  * @param intp_id interrupt to read from
@@ -139,6 +148,15 @@ void aplic_set_pend(irqid_t intp_id);
  * @return false if interrupt is NOT pending
  */
 bool aplic_get_pend(irqid_t intp_id);
+
+/**
+ * @brief Reads the pending bits for interrupt sources 
+ *        reg_indx × 32 through reg_indx × 32 + 31. 
+ * 
+ * @param reg_indx register index
+ * @return a 32 bit value containing interrupts pending state for reg_indx.
+ */
+uint32_t aplic_get32_pend(uint8_t reg_indx);
 
 /**
  * @brief Clear a pending bit from a inetrrupt writting to in_clripnum.
@@ -164,6 +182,15 @@ uint32_t aplic_get_inclrip(uint8_t reg_indx);
 void aplic_set_enbl(irqid_t intp_id);
 
 /**
+ * @brief Modifies the enable bits for interrupt
+ *        sources reg_indx × 32 through reg_indx × 32 + 31.
+ * 
+ * @param reg_indx register index
+ * @param reg_val register value to be written.
+ */
+void aplic_set32_enbl(uint8_t reg_indx, uint32_t reg_val);
+
+/**
  * @brief Read the enable value of a given interrut
  * 
  * @param intp_id interrupt to read from
@@ -178,6 +205,15 @@ bool aplic_get_enbl(irqid_t intp_id);
  * @param intp_id Interrupt to disable
  */
 void aplic_clr_enbl(irqid_t intp_id);
+
+/**
+ * @brief Modifies the enable bits for interrupt
+ *        sources reg_indx × 32 through reg_indx × 32 + 31.
+ * 
+ * @param reg_indx register index
+ * @param reg_val register value to be written.
+ */
+void aplic_clr32_enbl(uint8_t reg_indx, uint32_t reg_val);
 
 /**
  * @brief Write to register target (see AIA spec 0.3.2 section 4.5.16)
