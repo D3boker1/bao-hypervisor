@@ -815,14 +815,13 @@ static uint32_t vaplic_get_claimi(struct vcpu *vcpu, idcid_t idc_id){
 }
 
 /**
- * @brief register access emulation functions
+ * @brief domaincfg register access emulation function 
  * 
  * @param acc access information
  * 
  * It determines whether it needs to call the write or read funcion
  * for the choosen register.
  */
-
 static void vaplic_emul_domaincfg_access(struct emul_access *acc){
     if (acc->write) {
         vaplic_set_domaincfg(cpu()->vcpu, vcpu_readreg(cpu()->vcpu, acc->reg));
@@ -831,6 +830,14 @@ static void vaplic_emul_domaincfg_access(struct emul_access *acc){
     }
 }
 
+/**
+ * @brief sourcecfg register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_srccfg_access(struct emul_access *acc){
     int intp = (acc->addr & 0xFFF)/4;
     if (acc->write) {
@@ -840,6 +847,14 @@ static void vaplic_emul_srccfg_access(struct emul_access *acc){
     }
 }
 
+/**
+ * @brief setip register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_setip_access(struct emul_access *acc){
     int reg = (acc->addr & 0x7F)/4;
     if (acc->write) {
@@ -849,12 +864,28 @@ static void vaplic_emul_setip_access(struct emul_access *acc){
     }
 }
 
+/**
+ * @brief setipnum register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_setipnum_access(struct emul_access *acc){
     if (acc->write) {
         vaplic_set_setipnum(cpu()->vcpu, vcpu_readreg(cpu()->vcpu, acc->reg));
     }
 }
 
+/**
+ * @brief clrip register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_in_clrip_access(struct emul_access *acc){
     int reg = (acc->addr & 0x7F)/4;
     if (acc->write) {
@@ -864,12 +895,28 @@ static void vaplic_emul_in_clrip_access(struct emul_access *acc){
     }
 }
 
+/**
+ * @brief clripnum register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_clripnum_access(struct emul_access *acc){
     if (acc->write) {
         vaplic_set_clripnum(cpu()->vcpu, vcpu_readreg(cpu()->vcpu, acc->reg));
     }
 }
 
+/**
+ * @brief setie register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_setie_access(struct emul_access *acc){
     int reg = (acc->addr & 0x7F)/4;
     if (acc->write) {
@@ -879,12 +926,28 @@ static void vaplic_emul_setie_access(struct emul_access *acc){
     }
 }
 
+/**
+ * @brief setienum register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_setienum_access(struct emul_access *acc){
     if (acc->write) {
         vaplic_set_setienum(cpu()->vcpu, vcpu_readreg(cpu()->vcpu, acc->reg));
     }
 }
 
+/**
+ * @brief clrie register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_clrie_access(struct emul_access *acc){
     int reg = (acc->addr & 0x7F)/4;
     if (acc->write) {
@@ -892,12 +955,28 @@ static void vaplic_emul_clrie_access(struct emul_access *acc){
     }
 }
 
+/**
+ * @brief clrienum register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_clrienum_access(struct emul_access *acc){
     if (acc->write) {
         vaplic_set_clrienum(cpu()->vcpu, vcpu_readreg(cpu()->vcpu, acc->reg));
     }
 }
 
+/**
+ * @brief target register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_target_access(struct emul_access *acc){
     int intp = (acc->addr & 0xFFF)/4;
     if (acc->write) {
@@ -907,6 +986,14 @@ static void vaplic_emul_target_access(struct emul_access *acc){
     }
 }
 
+/**
+ * @brief idelivery register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_idelivery_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_idelivery(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
@@ -915,6 +1002,14 @@ static void vaplic_emul_idelivery_access(struct emul_access *acc, idcid_t idc_id
     }
 }
 
+/**
+ * @brief iforce register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_iforce_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_iforce(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
@@ -923,6 +1018,14 @@ static void vaplic_emul_iforce_access(struct emul_access *acc, idcid_t idc_id){
     }
 }
 
+/**
+ * @brief ithreshold register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_ithreshold_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) {
         vaplic_set_ithreshold(cpu()->vcpu, idc_id, vcpu_readreg(cpu()->vcpu, acc->reg));
@@ -931,11 +1034,27 @@ static void vaplic_emul_ithreshold_access(struct emul_access *acc, idcid_t idc_i
     }
 }
 
+/**
+ * @brief topi register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_topi_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) return;
     vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_topi(cpu()->vcpu, idc_id));
 }
 
+/**
+ * @brief claimi register access emulation function 
+ * 
+ * @param acc access information
+ * 
+ * It determines whether it needs to call the write or read funcion
+ * for the choosen register.
+ */
 static void vaplic_emul_claimi_access(struct emul_access *acc, idcid_t idc_id){
     if (acc->write) return;
     vcpu_writereg(cpu()->vcpu, acc->reg, vaplic_get_claimi(cpu()->vcpu, idc_id));
@@ -958,6 +1077,13 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id){
     spin_unlock(&vaplic->lock);
 }
 
+/**
+ * @brief Given an address, this function returns if it is reserved
+ * 
+ * @param addr address to check
+ * @return true if the address is reserved
+ * @return false if the address is NOT reserved
+ */
 static bool vaplic_domain_emul_reserved (uint16_t addr) {
     bool ret = false;
     if (ADDR_INSIDE_RANGE(addr, reserved1, setip)       ||
