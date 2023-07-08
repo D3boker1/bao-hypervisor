@@ -665,25 +665,24 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
 }
 
 /**
- * @brief Set idelivery register for a given idc. Only 0 and 1 are allowed.
+ * @brief Set idelivery register for a given idc. 
  * 
  * @param vcpu virtual CPU
  * @param idc_id idc identifier
- * @param new_val new value to write in iforce
+ * @param new_val new value to write in idelivery. Only 0 and 1 are allowed.
  */
 static void vaplic_set_idelivery(struct vcpu *vcpu, idcid_t idc_id, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     new_val = (new_val & 0x1);
     if (idc_id < vaplic->idc_num){
-        if (new_val) 
+        if (new_val != 0) 
             bitmap_set(vaplic->idelivery, idc_id);
         else
             bitmap_clear(vaplic->idelivery, idc_id);
     }
-    spin_unlock(&vaplic->lock);
-
     vaplic_update_hart_line(vcpu, idc_id);
+    spin_unlock(&vaplic->lock);
 }
 
 /**
@@ -701,29 +700,27 @@ static uint32_t vaplic_get_idelivery(struct vcpu *vcpu, idcid_t idc_id){
 }
 
 /**
- * @brief Set iforce register for a given idc. Only 0 and 1 are allowed.
+ * @brief Set iforce register for a given idc. 
  * 
  * @param vcpu virtual CPU
  * @param idc_id idc identifier
- * @param new_val new value to write in iforce
+ * @param new_val new value to write in iforce. Only 0 and 1 are allowed.
  */
 static void vaplic_set_iforce(struct vcpu *vcpu, idcid_t idc_id, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
-    new_val = (new_val & 0x1);
     if (idc_id < vaplic->idc_num){
-        if (new_val) 
+        if ((new_val & 0x1) != 0) 
             bitmap_set(vaplic->iforce, idc_id);
         else
             bitmap_clear(vaplic->iforce, idc_id);
     }
-    spin_unlock(&vaplic->lock);
-
     vaplic_update_hart_line(vcpu, idc_id);
+    spin_unlock(&vaplic->lock);
 }
 
 /**
- * @brief Read idelivery register from a given idc.
+ * @brief Read iforce register from a given idc.
  * 
  * @param vcpu virtual CPU
  * @param idc_id idc identifier
@@ -749,9 +746,8 @@ static void vaplic_set_ithreshold(struct vcpu *vcpu, idcid_t idc_id, uint32_t ne
     if (idc_id < vaplic->idc_num){
         vaplic->ithreshold[idc_id] = new_val;
     }
-    spin_unlock(&vaplic->lock);
-
     vaplic_update_hart_line(vcpu, idc_id);
+    spin_unlock(&vaplic->lock);
 }
 
 /**
@@ -783,34 +779,29 @@ static uint32_t vaplic_get_topi(struct vcpu *vcpu, idcid_t idc_id){
 }
 
 /**
- * @brief Read claimi register from a given idc.
+ * @brief Returns the highest pending and enabled interrupt.
+ * 
+ * Claimi has the same value as topi. However, reading claimi has the side 
+ * effect of clearing the pending bit for the reported interrupt identity.
  * 
  * @param vcpu virtual CPU
  * @param idc_id idc identifier
- * @return uint32_t value read from claimi
+ * @return 32 bit value read from virt claimi
  */
 static uint32_t vaplic_get_claimi(struct vcpu *vcpu, idcid_t idc_id){
     uint32_t ret = 0;
-    struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+    struct vaplic* vaplic = &vcpu->vm->arch.vaplic;
+    spin_lock(&vaplic->lock);
     if (idc_id < vaplic->idc_num){
         ret = vaplic->topi_claimi[idc_id];
-        /** Sepurious intp*/
+        BIT32_CLR_INTP(vaplic->ip, (ret >> IDC_CLAIMI_INTP_ID_SHIFT));
+        /** Spurious intp*/
         if (ret == 0){
-            // Clear the virt iforce bit
-            vaplic->iforce[idc_id] = 0;
-            if(vaplic_get_hw(vcpu,(ret >> 16))){
-                // Clear the physical iforce bit
-                // aplic_idc_set_iforce(idc_id, 0);
-            }
-        }
-        // Clear the virt pending bit for te read intp
-        BIT32_CLR_INTP(vaplic->ip, (ret >> 16));
-        if(vaplic_get_hw(vcpu,(ret >> 16))){
-            // Clear the physical pending bit for te read intp
-            aplic_idc_get_claimi(idc_id);
+            bitmap_clear(vaplic->iforce, idc_id);
         }
         vaplic_update_hart_line(vcpu, idc_id);
     }
+    spin_unlock(&vaplic->lock);
     return ret;
 }
 
