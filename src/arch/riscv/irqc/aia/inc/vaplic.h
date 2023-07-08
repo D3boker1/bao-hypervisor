@@ -23,7 +23,6 @@ struct vaplic {
     BITMAP_ALLOC(hw, APLIC_MAX_INTERRUPTS);
     uint32_t domaincfg;
     uint32_t srccfg[APLIC_MAX_INTERRUPTS];
-    uint32_t in_clrip[APLIC_MAX_INTERRUPTS/32];
     uint32_t active[APLIC_MAX_INTERRUPTS/32];
     uint32_t ip[APLIC_MAX_INTERRUPTS/32];
     uint32_t ie[APLIC_MAX_INTERRUPTS/32];
