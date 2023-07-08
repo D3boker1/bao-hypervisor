@@ -128,48 +128,57 @@ static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
 }
 
 /**
- * @brief Emulates the notifier aplic module.
- *        (02/11/2022): computes the next pending bit.
- *        Only direct mode is supported. 
+ * @brief Updates the topi register with with the 
+ *        highest pend & en interrupt id
  * 
- * @param vcpu 
- * @return irqid_t 
+ * @param vcpu virtual cpu
+ * @return true if topi was updated, requiring the handling of the interrupt
+ * @return false if there is no new interrupt to handle
  */
-static irqid_t vaplic_emul_notifier(struct vcpu* vcpu){
+static bool vaplic_update_topi(struct vcpu* vcpu){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+    uint32_t intp_prio = APLIC_MIN_PRIO;
+    irqid_t intp_id = APLIC_MAX_INTERRUPTS;
+    uint32_t intp_hart_index = 0;
+    uint32_t prio = 0;
+    uint32_t idc_threshold = 0;
+    bool domain_enbl = false;
+    bool idc_enbl = false;
+    bool idc_force =  false;
 
     /** Find highest pending and enabled interrupt */
-    uint32_t max_prio = APLIC_MIN_PRIO;
-    irqid_t int_id = 0;
-    uint32_t hart_index = 0;
-    uint32_t prio = 0;
-
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
-        if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
-            uint32_t target = vaplic_get_target(vcpu, i); 
-            prio = target & 0xFF; 
-            
-            if (prio < max_prio) {
-                max_prio = prio;
-                int_id = i;
-                hart_index = (target >> 18) & 0x3FFF;
-            }
+        if (GET_HART_INDEX(vcpu, i) == vcpu->id) {
+            if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
+                prio = vaplic_get_target(vcpu, i) & APLIC_TARGET_IPRIO_MASK; 
+                if (prio < intp_prio) {
+                    intp_prio = prio;
+                    intp_id = i;
+                    intp_hart_index = vcpu->id;
+                }
+            }   
         }
     }
 
-    /** Can interrupt be delivery? */
-    uint32_t domaincgfIE = (vaplic_get_domaincfg(vcpu) >> 8) & 0x1;
-    uint32_t threshold = vaplic_get_ithreshold(vcpu, hart_index);
-    uint32_t delivery = vaplic_get_idelivery(vcpu, hart_index);
-    uint32_t force =  vaplic_get_iforce(vcpu, hart_index);
-    if ((max_prio < threshold || threshold == 0 || force == 1) && 
-         delivery == 1 && domaincgfIE == 1){
-        vaplic->topi_claimi[hart_index] = (int_id << 16) | prio;
-        return int_id;
+    /** Can interrupt be delivered? */
+    idc_threshold = vaplic_get_ithreshold(vcpu, intp_hart_index);
+    domain_enbl = !!(vaplic_get_domaincfg(vcpu) & APLIC_DOMAINCFG_IE);
+    idc_enbl = !!(vaplic_get_idelivery(vcpu, intp_hart_index));
+    idc_force = !!(vaplic_get_iforce(vcpu, intp_hart_index));
+      
+    if (intp_id != APLIC_MAX_INTERRUPTS) {
+        if ((intp_prio < idc_threshold || idc_threshold == 0 || idc_force) && 
+            idc_enbl && domain_enbl){
+            if(idc_force){
+                intp_id = 0;
+                intp_prio = 0;
+            }
+            vaplic->topi_claimi[intp_hart_index] = (intp_id << 16) | intp_prio;
+            return true;
+        }
     }
-    else{
-        return 0;
-    }
+    vaplic->topi_claimi[intp_hart_index] = 0;
+    return false;
 }
 
 enum {UPDATE_HART_LINE};
@@ -193,7 +202,7 @@ static void vaplic_update_single_hart(struct vcpu* vcpu, vcpuid_t vhart_index){
      *  Else, send a mensage to the targeting cpu 
      */
     if(pcpu_id == cpu()->id) {
-        if(vaplic_emul_notifier(vcpu)){
+        if(vaplic_update_topi(vcpu)){
             CSRS(CSR_HVIP, HIP_VSEIP);
         } else  {
             CSRC(CSR_HVIP, HIP_VSEIP);
