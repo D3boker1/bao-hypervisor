@@ -27,7 +27,8 @@ struct vplic {
 
 struct vm;
 struct vcpu;
-void virqc_init(struct vm *vm, struct arch_platform *arch_platform);
+struct arch_vm_platform;
+void virqc_init(struct vm *vm, struct arch_vm_platform arch_vm_platform);
 void vplic_inject(struct vcpu *vcpu, irqid_t id);
 void vplic_set_hw(struct vm *vm, irqid_t id);
 

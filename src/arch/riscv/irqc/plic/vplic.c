@@ -346,11 +346,11 @@ static bool vplic_hart_emul_handler(struct emul_access *acc)
     return true;
 }
 
-void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
+void virqc_init(struct vm *vm, struct arch_vm_platform arch_vm_platform)
 {
     if (cpu()->id == vm->master) {
         vm->arch.vplic.plic_global_emul = (struct emul_mem) {
-            .va_base = arch_platform->irqc.plic.base,
+            .va_base = arch_vm_platform.irqc.plic.base,
             .size = sizeof(struct plic_global_hw),
             .handler = vplic_global_emul_handler
         };
@@ -358,7 +358,7 @@ void virqc_init(struct vm *vm, struct arch_platform *arch_platform)
         vm_emul_add_mem(vm, &vm->arch.vplic.plic_global_emul);
 
         vm->arch.vplic.plic_claimcomplte_emul = (struct emul_mem) {
-            .va_base = arch_platform->irqc.plic.base + PLIC_CLAIMCMPLT_OFF,
+            .va_base = arch_vm_platform.irqc.plic.base + PLIC_CLAIMCMPLT_OFF,
             .size = sizeof(struct plic_hart_hw) * vm->cpu_num * PLAT_PLIC_CNTXT_PER_HART,
             .handler = vplic_hart_emul_handler
         };
