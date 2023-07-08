@@ -38,7 +38,7 @@
  * @param vcpu Virtual cpu to convert
  * @return int The physical cpu id; or INVALID_CPUID in case of error.
  */
-static inline int vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu, vcpuid_t vhart){
+static inline cpuid_t vaplic_vcpuid_to_pcpuid(struct vcpu *vcpu, vcpuid_t vhart){
     return vm_translate_to_pcpuid(vcpu->vm, vhart);
 }
 
@@ -192,7 +192,7 @@ CPU_MSG_HANDLER(vaplic_ipi_handler, VPLIC_IPI_ID);
  * @param vhart_index hart id to update
  */
 static void vaplic_update_single_hart(struct vcpu* vcpu, vcpuid_t vhart_index){
-    vcpuid_t pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, vhart_index);
+    cpuid_t pcpu_id = vaplic_vcpuid_to_pcpuid(vcpu, vhart_index);
 
     vhart_index &= APLIC_MAX_NUM_HARTS_MAKS;
 
