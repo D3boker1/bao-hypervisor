@@ -29,6 +29,8 @@
                                         APLIC_TARGET_HART_IDX_SHIFT) & \
                                         APLIC_TARGET_HART_IDX_MASK)
 
+#define INTP_VALID(intp_id) (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS)
+
 /**
  * @brief Converts a virtual cpu id into the physical one
  * 
@@ -82,6 +84,23 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     if (intp_id < APLIC_MAX_INTERRUPTS){
         ret = !!BIT32_GET_INTP(vaplic->ie, intp_id);
+    }
+    return ret;
+}
+
+/**
+ * @brief Returns if a given interrupt is active for this domain.
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt id
+ * @return true if the interrupt is active
+ * @return false if the interrupt is NOT active
+ */
+static bool vaplic_get_active(struct vcpu *vcpu, irqid_t intp_id){
+    struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
+    bool ret = false;
+    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
+        ret = !!BIT32_GET_INTP(vaplic->active, intp_id);
     }
     return ret;
 }
@@ -230,38 +249,37 @@ static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
 }
 
 /**
- * @brief Read from a given interrupt sourcecfg register
+ * @brief Read the sourcecfg register of a given interrupt
  * 
- * @param vcpu 
- * @param intp_id Interrupt id to read
- * @return uint32_t 
+ * @param vcpu virtual hart
+ * @param intp_id interrupt ID
+ * @return uint32_t value with the interrupt sourcecfg value
  */
 static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
-    uint32_t real_int_id = intp_id - 1;
+    struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     uint32_t ret = 0;
 
-    if(intp_id == 0)
-        return ret;
-    struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    if (real_int_id < APLIC_MAX_INTERRUPTS) ret = vaplic->srccfg[real_int_id];
+    if(intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
+        ret = vaplic->srccfg[intp_id];
+    }
     return ret;
 }
 
 /**
- * @brief Write to sourcecfg register of a given interrupt
+ * @brief Write the sourcecfg register of a given interrupt
  * 
- * @param vcpu 
- * @param intp_id interrupt id to write to
+ * @param vcpu virtual hart
+ * @param intp_id interrupt ID
  * @param new_val value to write to sourcecfg
  */
 static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
+
     spin_lock(&vaplic->lock);
-    /** If intp is valid and new source config is different from prev. one.*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && 
         vaplic_get_sourcecfg(vcpu, intp_id) != new_val) {
         /** If intp is being delegated make whole reg 0.
-         *  This happens because this domain is always a leaf. */        
+         *  This happens because a S domain is always a leaf. */        
         new_val &= (new_val & APLIC_SRCCFG_D) ? 0 : APLIC_SRCCFG_SM;
 
         /** If SM is reserved make intp inactive */
@@ -275,17 +293,20 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
             new_val = APLIC_SOURCECFG_SM_EDGE_FALL;
         }
 
-        /** Is this intp a phys. intp? */
         if(vaplic_get_hw(vcpu, intp_id)){
-            /** Update in phys. aplic */
             aplic_set_sourcecfg(intp_id, new_val);
-            /** If phys aplic was succe. written, then update virtual*/
-            if(aplic_get_sourcecfg(intp_id) == new_val){
-                vaplic->srccfg[intp_id-1] = new_val;
-            }
+            new_val = aplic_get_sourcecfg(intp_id); 
+        }
+        vaplic->srccfg[intp_id] = new_val;
+
+        if (new_val == APLIC_SOURCECFG_SM_INACTIVE){
+            BIT32_CLR_INTP(vaplic->active, intp_id);
+            /** Zero pend, en and target registers if intp is now inactive */
+            BIT32_CLR_INTP(vaplic->ip, intp_id);
+            BIT32_CLR_INTP(vaplic->ie, intp_id);
+            vaplic->target[intp_id] = 0;
         } else {
-            /** If intp is not phys. update virtual only */
-            vaplic->srccfg[intp_id-1] = new_val;
+            BIT32_SET_INTP(vaplic->active, intp_id);
         }
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
     }
@@ -542,14 +563,16 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
 /**
  * @brief Write to target register of a given interrupt
  * 
- * @param vcpu 
- * @param intp_id interrupt id to write to
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt ID
  * @param new_val value to write to target
  */
 static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
-    uint32_t hart_index = (new_val >> APLIC_TARGET_HART_IDX_SHIFT) & APLIC_TARGET_HART_IDX_MASK;
+    uint16_t hart_index = (new_val >> APLIC_TARGET_HART_IDX_SHIFT) & APLIC_TARGET_HART_IDX_MASK;
     cpuid_t pcpu_id = vm_translate_to_pcpuid(vcpu->vm, hart_index);
+    uint32_t new_aplic_target = 0;
+    uint32_t new_vaplic_target = 0;
 
     spin_lock(&vaplic->lock);
     if(pcpu_id == INVALID_CPUID){
@@ -557,28 +580,28 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
          *  and read the new pcpu.
          *  Software should not write anything other than legal 
          *  values to such a field */
-        pcpu_id = vm_translate_to_pcpuid(vcpu->vm, 0);
+        hart_index = 0;
+        pcpu_id = vm_translate_to_pcpuid(vcpu->vm, hart_index);
     }
-    /** Write the physical CPU in hart index */
+    
+    /** If prio is 0, set to 1 (max) according to the spec*/
     new_val &= APLIC_TARGET_IPRIO_MASK;
-    new_val |= (pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+    if (new_val == 0) {
+        new_val = APLIC_TARGET_PRIO_DEFAULT;
+    }
+    /** Write the target CPU in hart index */
+    new_aplic_target = new_val|(pcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+    new_vaplic_target = new_val|(hart_index << APLIC_TARGET_HART_IDX_SHIFT);
 
-    if (intp_id > 0  && intp_id < APLIC_MAX_INTERRUPTS && 
+    if (vaplic_get_active(vcpu, intp_id) && 
         vaplic_get_target(vcpu, intp_id) != new_val) {
-
-        new_val &= APLIC_TARGET_DIRECT_MASK;
-        /** If prio is 0, set to 1 (max)*/
-        if ((new_val & APLIC_TARGET_IPRIO_MASK) == 0){
-            new_val |= APLIC_TARGET_PRIO_DEFAULT;
-        }
-        
         if(vaplic_get_hw(vcpu, intp_id)){
-            aplic_set_target(intp_id, new_val);
-            if(aplic_get_target(intp_id) == new_val){
-                vaplic->target[intp_id-1] = new_val;
+            aplic_set_target(intp_id, new_aplic_target);
+            if(aplic_get_target(intp_id) == new_aplic_target){
+                vaplic->target[intp_id] = new_vaplic_target;
             }
         } else {
-            vaplic->target[intp_id-1] = new_val;
+            vaplic->target[intp_id] = new_vaplic_target;
         }
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
     }
@@ -586,28 +609,18 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
 }
 
 /**
- * @brief Read from a given interrupt target register
+ * @brief Read target register from a given interrupt
  * 
- * @param vcpu 
- * @param intp_id Interrupt id to read
- * @return uint32_t value with target from intp_id
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt ID
+ * @return uint32_t value with target value
  */
 static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
-    uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    cpuid_t pcpu_id = 0;
-    cpuid_t vcpu_id = 0;
+    uint32_t ret = 0;
     
-    if(intp_id == 0){
-        return ret;
-    }
-    
-    if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS){
-        /** Translate the physical cpu into the its virtual pair */
-        pcpu_id = vaplic->target[intp_id -1] >> APLIC_TARGET_HART_IDX_SHIFT;
-        vcpu_id = vm_translate_to_vcpuid(vcpu->vm, pcpu_id);
-        ret = vaplic->target[intp_id -1] & APLIC_TARGET_IPRIO_MASK;
-        ret |= (vcpu_id << APLIC_TARGET_HART_IDX_SHIFT);
+    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
+        ret = vaplic->target[intp_id];
     }
     return ret;
 }
@@ -899,8 +912,8 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id)
     
     /** Intp has a valid ID and the virtual interrupt is not pending*/
     if (intp_id > 0 && intp_id < APLIC_MAX_INTERRUPTS && !vaplic_get_pend(vcpu, intp_id)){
-        if(vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_INACTIVE &&
-           vaplic->srccfg[intp_id-1] != APLIC_SOURCECFG_SM_DETACH){
+        if(vaplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_INACTIVE &&
+           vaplic->srccfg[intp_id] != APLIC_SOURCECFG_SM_DETACH){
             BIT32_SET_INTP(vaplic->ip, intp_id);
         }
         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
