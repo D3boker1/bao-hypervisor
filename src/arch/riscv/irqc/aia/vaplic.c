@@ -240,8 +240,6 @@ static void vaplic_ipi_handler(uint32_t event, uint64_t data)
     }
 }
 
-/** APLIC Functions emulation */
-
 /**
  * @brief Write to domaincfg register a new value.
  * 
@@ -665,8 +663,6 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     }
     return ret;
 }
-
-/** IDC Functions emulation */
 
 /**
  * @brief Set idelivery register for a given idc. Only 0 and 1 are allowed.
