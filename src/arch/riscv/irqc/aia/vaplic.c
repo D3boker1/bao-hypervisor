@@ -211,25 +211,22 @@ static void vaplic_set_domaincfg(struct vcpu *vcpu, uint32_t new_val){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     /** Update only the virtual domaincfg */
-    /** Only Interrupt Enable is configurable. */
-    new_val &= APLIC_DOMAINCFG_IE;
+    /** Only Interrupt Enable and Delivery mode are configurable */
+    new_val &= (APLIC_DOMAINCFG_IE | APLIC_DOMAINCFG_DM);
     vaplic->domaincfg = new_val | APLIC_DOMAINCFG_RO80;
-    spin_unlock(&vaplic->lock);
-
     vaplic_update_hart_line(vcpu, UPDATE_ALL_HARTS);
+    spin_unlock(&vaplic->lock);
 }
 
 /**
  * @brief Read from domaincfg
  * 
- * @param vcpu 
+ * @param vcpu virtual hart
  * @return uint32_t domaincfg value 
  */
 static uint32_t vaplic_get_domaincfg(struct vcpu *vcpu){
-    uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    ret = vaplic->domaincfg;
-    return ret;
+    return vaplic->domaincfg;
 }
 
 /**
