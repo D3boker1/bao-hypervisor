@@ -11,7 +11,9 @@
 #include <string.h>
 
 BITMAP_ALLOC(hyp_interrupt_bitmap, MAX_INTERRUPTS);
+#if(IRQC != AIA)
 BITMAP_ALLOC(global_interrupt_bitmap, MAX_INTERRUPTS);
+#endif
 
 irq_handler_t interrupt_handlers[MAX_INTERRUPTS];
 
@@ -53,6 +55,14 @@ static inline bool interrupt_is_reserved(irqid_t int_id)
 
 enum irq_res interrupts_handle(irqid_t int_id)
 {
+    #if (IRQC == AIA)
+    if (interrupt_is_reserved(int_id)) {
+        interrupt_handlers[int_id](int_id);
+        return HANDLED_BY_HYP;
+    } else {
+        ERROR("received unknown interrupt id = %d", int_id);
+    }
+    #else
     if (vm_has_interrupt(cpu()->vcpu->vm, int_id)) {
         vcpu_inject_hw_irq(cpu()->vcpu, int_id);
 
@@ -66,18 +76,27 @@ enum irq_res interrupts_handle(irqid_t int_id)
     } else {
         ERROR("received unknown interrupt id = %d", int_id);
     }
+    #endif
 }
 
 void interrupts_vm_assign(struct vm *vm, irqid_t id)
 {
+    #if (IRQC == AIA)
+    if (interrupts_arch_conflict(vm->interrupt_bitmap, id)) {
+        ERROR("Interrupts conflict, id = %d\n", id);
+    }
+    #else
     if (interrupts_arch_conflict(global_interrupt_bitmap, id)) {
         ERROR("Interrupts conflict, id = %d\n", id);
     }
+    #endif
 
     interrupts_arch_vm_assign(vm, id);
 
     bitmap_set(vm->interrupt_bitmap, id);
+    #if (IRQC != AIA)
     bitmap_set(global_interrupt_bitmap, id);
+    #endif
 }
 
 void interrupts_reserve(irqid_t int_id, irq_handler_t handler)
@@ -85,6 +104,8 @@ void interrupts_reserve(irqid_t int_id, irq_handler_t handler)
     if (int_id < MAX_INTERRUPTS) {
         interrupt_handlers[int_id] = handler;
         bitmap_set(hyp_interrupt_bitmap, int_id);
+        #if (IRQC != AIA)
         bitmap_set(global_interrupt_bitmap, int_id);
+        #endif
     }
 }

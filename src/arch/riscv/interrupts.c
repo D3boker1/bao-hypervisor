@@ -51,6 +51,7 @@ void interrupts_arch_cpu_enable(bool en)
 
 void interrupts_arch_enable(irqid_t int_id, bool en)
 {
+    #if(IRQC != AIA)
     if (int_id == SOFT_INT_ID) {
         if (en)
             CSRS(sie, SIE_SSIE);
@@ -65,6 +66,19 @@ void interrupts_arch_enable(irqid_t int_id, bool en)
         irqc_set_enbl(int_id, en);
         irqc_set_prio(int_id);
     }
+    #else
+    if (int_id == SOFT_INT_ID) {
+        irqc_set_enbl(int_id, en, IRQC_IMSIC);
+    } else if (int_id == TIMR_INT_ID) {
+        if (en)
+            CSRS(sie, SIE_STIE);
+        else
+            CSRC(sie, SIE_STIE);
+    } else {
+        irqc_set_enbl(int_id, en, IRQC_BOTH);
+        irqc_set_prio(int_id);
+    }
+    #endif
 }
 
 void interrupts_arch_handle()
@@ -121,6 +135,7 @@ void interrupts_arch_handle()
 
 bool interrupts_arch_check(irqid_t int_id)
 {
+    #if(IRQC != AIA)
     if (int_id == SOFT_INT_ID) {
         return CSRR(sip) & SIP_SSIP;
     } else if (int_id == TIMR_INT_ID) {
@@ -128,6 +143,13 @@ bool interrupts_arch_check(irqid_t int_id)
     } else {
         return irqc_get_pend(int_id);
     }
+    #else
+    if (int_id == TIMR_INT_ID) {
+        return CSRR(sip) & SIP_STIP;
+    } else {
+        return irqc_get_pend(int_id);
+    }
+    #endif
 }
 
 void interrupts_arch_clear(irqid_t int_id)

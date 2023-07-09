@@ -17,6 +17,8 @@
 #define HART_REG_OFF APLIC_IDC_OFF
 #define IRQC_HART_INST APLIC_DOMAIN_NUM_HARTS
 
+typedef enum irqc{IRQC_BOTH = 0, IRQC_APLIC, IRQC_IMSIC}irqc_t;
+
 static inline void irqc_init()
 {
     aplic_init();
@@ -31,11 +33,18 @@ static inline void irqc_cpu_init()
     }
 }
 
-static inline void irqc_set_enbl(irqid_t int_id, bool en)
+static inline void irqc_set_enbl(irqid_t int_id, bool en, irqc_t irqc)
 {
-    aplic_set_enbl(int_id);
-    if(aplic_msi_mode())
-        imsic_set_enbl(int_id);
+    if(irqc == IRQC_BOTH){
+        aplic_set_enbl(int_id);
+        if(aplic_msi_mode())
+            imsic_set_enbl(int_id);
+    } else if (irqc == IRQC_APLIC){
+        aplic_set_enbl(int_id);
+    } else {
+        if(aplic_msi_mode())
+            imsic_set_enbl(int_id);
+    }
 }
 
 static inline void irqc_set_prio(irqid_t int_id)
