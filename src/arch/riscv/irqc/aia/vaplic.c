@@ -30,7 +30,16 @@
                                         APLIC_TARGET_HART_IDX_SHIFT) & \
                                         APLIC_TARGET_HART_IDX_MASK)
 
-#define INTP_VALID(intp_id) (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS)
+/**
+ * @brief Returns if a given interrupt is valid
+ * 
+ * @param intp_id interrupt ID
+ * @return true if the interrupt is valid
+ * @return false if the interrupt is NOT valid
+ */
+static inline bool vaplic_intp_valid(irqid_t intp_id){
+    return intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS;
+}
 
 /**
  * @brief Converts a virtual cpu id into the physical one
@@ -67,14 +76,14 @@ static bool vaplic_get_hw(struct vcpu* vcpu, irqid_t intp_id)
 {
     bool ret = false;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    if (intp_id <= APLIC_MAX_INTERRUPTS) ret = bitmap_get(vaplic->hw, intp_id);
+    if (vaplic_intp_valid(intp_id)) ret = bitmap_get(vaplic->hw, intp_id);
     return ret;
 }
 
 static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    if (intp_id < APLIC_MAX_INTERRUPTS){
+    if (vaplic_intp_valid(intp_id)){
         ret = !!BIT32_GET_INTP(vaplic->ip, intp_id);
     }
     return ret;
@@ -83,7 +92,7 @@ static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
 static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
-    if (intp_id < APLIC_MAX_INTERRUPTS){
+    if (vaplic_intp_valid(intp_id)){
         ret = !!BIT32_GET_INTP(vaplic->ie, intp_id);
     }
     return ret;
@@ -100,7 +109,7 @@ static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
 static bool vaplic_get_active(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
-    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
+    if (vaplic_intp_valid(intp_id)){
         ret = !!BIT32_GET_INTP(vaplic->active, intp_id);
     }
     return ret;
@@ -118,7 +127,7 @@ static bool vaplic_set_pend(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     bool ret = false;
 
-    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS && 
+    if (vaplic_intp_valid(intp_id) && 
         !vaplic_get_pend(vcpu, intp_id) &&
         vaplic_get_active(vcpu, intp_id)){
         BIT32_SET_INTP(vaplic->ip, intp_id);
@@ -288,7 +297,7 @@ static uint32_t vaplic_get_sourcecfg(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     uint32_t ret = 0;
 
-    if(intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
+    if(vaplic_intp_valid(intp_id)){
         ret = vaplic->srccfg[intp_id];
     }
     return ret;
@@ -667,7 +676,7 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     uint32_t ret = 0;
     
-    if (intp_id != 0 && intp_id < APLIC_MAX_INTERRUPTS){
+    if (vaplic_get_active(vcpu, intp_id)){
         ret = vaplic->target[intp_id];
     }
     return ret;
