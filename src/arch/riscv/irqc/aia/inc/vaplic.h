@@ -32,6 +32,7 @@ struct vaplic {
 
 struct vm;
 struct vcpu;
+struct arch_vm_platform;
 
 /**
  * @brief Initialize the virtual APLIC for a given virtual machine.
@@ -40,8 +41,7 @@ struct vcpu;
  * @param arch_vm_platform virtual platform configuration
  * 
  */
-struct arch_vm_platform;
-void virqc_init(struct vm *vm, struct arch_vm_platform arch_vm_platform);
+void vaplic_init(struct vm *vm, const struct arch_vm_platform *arch_vm_platform);
 
 /**
  * @brief Inject an interrupt into a vm.
@@ -63,6 +63,17 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t id);
  * @param id interrupt identification to associate.
  */
 void vaplic_set_hw(struct vm *vm, irqid_t id);
+
+/**
+ * @brief Wrapper for the virtual irqc initialization function
+ * 
+ * @param vm Virtual Machine 
+ * @param arch_vm_platform platform configuration
+ */
+static inline void virqc_init(struct vm *vm, const struct arch_vm_platform *arch_vm_platform)
+{
+    vaplic_init(vm, arch_vm_platform);
+}
 
 /**
  * @brief Injects a given interrupt into a virtual cpu
