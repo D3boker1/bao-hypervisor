@@ -269,4 +269,4 @@ uint32_t aplic_idc_get_claimi(idcid_t idc_id);
  */
 void aplic_handle(void);
 
-#endif //_APLIC_H_
+#endif //APLIC_H

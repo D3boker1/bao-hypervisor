@@ -38,4 +38,4 @@ static inline void virqc_inject(vcpu_t *vcpu, irqid_t id)
     vplic_inject(vcpu, id);
 }
 
-#endif /* __VPLIC_H__ */
+#endif //VPLIC_H

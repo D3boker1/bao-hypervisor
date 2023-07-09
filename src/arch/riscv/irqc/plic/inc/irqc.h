@@ -57,4 +57,4 @@ static inline void virqc_set_hw(struct vm *vm, irqid_t id)
     vplic_set_hw(vm, id);
 }
 
-#endif //_IRQC_H_
+#endif //IRQC_H
