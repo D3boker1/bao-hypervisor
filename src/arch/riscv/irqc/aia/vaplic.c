@@ -121,6 +121,8 @@ static bool vaplic_get_active(struct vcpu *vcpu, irqid_t intp_id){
 /**
  * @brief Set a given interrupt as pending
  * 
+ * @precondition 
+ * 
  * @param vcpu virtual cpu
  * @param intp_id interrupt id
  * @return true if interrupt was set pending
@@ -178,12 +180,11 @@ static bool vaplic_update_topi(struct vcpu* vcpu){
     idc_enbl = !!(vaplic_get_idelivery(vcpu, vcpu->id));
     idc_force = !!(vaplic_get_iforce(vcpu, vcpu->id));
       
-    if (intp_id != APLIC_MAX_INTERRUPTS) {
-        if ((intp_prio < idc_threshold || idc_threshold == 0) && 
-            idc_enbl && domain_enbl){
+    if ((intp_id != APLIC_MAX_INTERRUPTS) && 
+        (intp_prio < idc_threshold || idc_threshold == 0) && 
+            idc_enbl && domain_enbl) {
             update_topi = (intp_id << 16) | intp_prio;
             ret = true;
-        }
     } else if (idc_force && idc_enbl && domain_enbl) {
         ret = true;
     }
