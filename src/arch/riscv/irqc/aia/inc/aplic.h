@@ -226,45 +226,35 @@ void aplic_clr_enbl(irqid_t intp_id);
 void aplic_clr_enbl_reg(size_t reg_indx, uint32_t reg_val);
 
 /**
- * @brief Write to register target (see AIA spec 0.3.2 section 4.5.16)
+ * @brief Write the priority of an interrupt to a given interrupt
  * 
- * @param intp_id Interrupt to configure the target options
- * @param val Value to be written in target register
- * 
- * If domaincfg.DM = 0, target have the format:
- * 
- * +-----------+------------+----------------------------------------+
- * | Bit-Field |    Name    |              Description               |
- * +-----------+------------+----------------------------------------+
- * | 31:28     | Hart Index | Hart to which interrupts will delivery |
- * | 7:0       | IPRIO      | Interrupt priority.                    |
- * +-----------+------------+----------------------------------------+
- * 
- * 
- * If domaincfg.DM = 1, target have the format:
- * 
- * +-----------+-------------+------------------------------------------------+
- * | Bit-Field |    Name     |                  Description                   |
- * +-----------+-------------+------------------------------------------------+
- * | 31:28     | Hart Index  | Hart to which interrupts will delivery         |
- * | 17:12     | Guest Index | Only if hypervisor extension were implemented. |
- * | 10:0      | EIID        | External Interrupt Identity. Specifies the data|
- * |           |             | value for MSIs                                 |
- * +-----------+-------------+------------------------------------------------+
+ * @param intp_id interrupt ID
+ * @param prio priority
  */
-void aplic_set_target(irqid_t intp_id, uint32_t val);
-
 void aplic_set_target_prio(irqid_t intp_id, uint8_t prio);
-void aplic_set_target_hart(irqid_t intp_id, cpuid_t hart);
-/**
- * @brief Read the target configurations for a given interrupt
- * 
- * @param intp_id Interrupt to read from
- * @return a 32 bit value with the target data
- */
-uint32_t aplic_get_target(irqid_t intp_id);
 
+/**
+ * @brief Write the target hart of an interrupt to a given interrupt
+ * 
+ * @param intp_id interrupt ID
+ * @param hart hart index
+ */
+void aplic_set_target_hart(irqid_t intp_id, cpuid_t hart);
+
+/**
+ * @brief Return the priority of a given interrupt 
+ * 
+ * @param intp_id interrupt ID
+ * @return uint8_t the interrupt priority
+ */
 uint8_t aplic_get_target_prio(irqid_t intp_id);
+
+/**
+ * @brief Return the target hart of a given interrupt
+ * 
+ * @param intp_id interrupt ID
+ * @return cpuid_t the interrupt hart index
+ */
 cpuid_t aplic_get_target_hart(irqid_t intp_id);
 
 /**
