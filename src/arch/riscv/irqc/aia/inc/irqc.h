@@ -35,7 +35,7 @@ static inline void irqc_set_prio(irqid_t int_id)
 {
     uint32_t hart_index = aplic_get_target(int_id);
     hart_index &= (APLIC_TARGET_HART_IDX_MASK << APLIC_TARGET_HART_IDX_SHIFT);
-    aplic_set_target(int_id, (hart_index | APLIC_TARGET_PRIO_DEFAULT));
+    aplic_set_target(int_id, (hart_index | APLIC_TARGET_MAX_PRIO));
 }
 
 static inline void irqc_handle()
