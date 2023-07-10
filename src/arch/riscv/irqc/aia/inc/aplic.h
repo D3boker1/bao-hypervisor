@@ -96,6 +96,7 @@ struct aplic_hart_hw {
 
 extern volatile struct aplic_global_hw *aplic_global;
 extern volatile struct aplic_hart_hw *aplic_hart;
+extern uint8_t APLIC_IPRIOLEN;
 
 /**
  * @brief Initialize the APLIC domain.

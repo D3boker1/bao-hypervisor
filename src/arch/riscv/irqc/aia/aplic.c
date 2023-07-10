@@ -26,6 +26,7 @@
 /** APLIC public data */
 volatile struct aplic_global_hw *aplic_global;
 volatile struct aplic_hart_hw *aplic_hart;
+uint8_t APLIC_IPRIOLEN = 0;
 
 void aplic_init(void)
 {
@@ -52,8 +53,8 @@ void aplic_init(void)
     for (size_t i = 0; i < APLIC_NUM_TARGET_REGS; i++){
         aplic_global->sourcecfg[i] = APLIC_SOURCECFG_SM_INACTIVE;
         aplic_global->target[i] = APLIC_TARGET_MIN_PRIO;
-       
     }
+    APLIC_IPRIOLEN = aplic_global->target[0] & APLIC_TARGET_IPRIO_MASK; 
     aplic_global->domaincfg |= APLIC_DOMAINCFG_IE;
 }
 
@@ -142,8 +143,7 @@ void aplic_clr_enbl_reg(size_t reg_indx, uint32_t reg_val)
 void aplic_set_target_prio(irqid_t intp_id, uint8_t prio)
 {
     aplic_global->target[intp_id - 1] &= ~(APLIC_TARGET_IPRIO_MASK);
-    /** This mask will be replaced when we figure it out the IPRIOLEN */
-    aplic_global->target[intp_id - 1] |= prio & APLIC_TARGET_IPRIO_MASK;
+    aplic_global->target[intp_id - 1] |= (prio & APLIC_TARGET_IPRIO_MASK);
 }
 
 void aplic_set_target_hart(irqid_t intp_id, cpuid_t hart)

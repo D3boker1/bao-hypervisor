@@ -605,7 +605,7 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
 static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_val){
     struct vaplic *vaplic = &vcpu->vm->arch.vaplic;
     vcpuid_t hart_index = (new_val >> APLIC_TARGET_HART_IDX_SHIFT) & APLIC_TARGET_HART_IDX_MASK;
-    uint8_t priority = new_val & APLIC_TARGET_IPRIO_MASK;
+    uint8_t priority = new_val & APLIC_IPRIOLEN;
     cpuid_t pcpu_id = vm_translate_to_pcpuid(vcpu->vm, hart_index);
 
     spin_lock(&vaplic->lock);
@@ -733,7 +733,7 @@ static void vaplic_set_ithreshold(struct vcpu *vcpu, idcid_t idc_id, uint32_t ne
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     spin_lock(&vaplic->lock);
     if (idc_id < vaplic->idc_num){
-        vaplic->ithreshold[idc_id] = new_val;
+        vaplic->ithreshold[idc_id] = new_val & APLIC_IPRIOLEN;
     }
     vaplic_update_hart_line(vcpu, idc_id);
     spin_unlock(&vaplic->lock);
