@@ -27,13 +27,9 @@ static inline void irqc_cpu_init()
     plic_cpu_init();
 }
 
-static inline void irqc_set_enbl(irqid_t int_id, bool en)
+static inline void irqc_config_irq(irqid_t int_id, bool en)
 {
     plic_set_enbl(cpu()->arch.plic_cntxt, int_id, en);
-}
-
-static inline void irqc_set_prio(irqid_t int_id)
-{
     plic_set_prio(int_id, 0xFE);
 }
 

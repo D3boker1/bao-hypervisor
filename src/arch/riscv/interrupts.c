@@ -59,8 +59,7 @@ void interrupts_arch_enable(irqid_t int_id, bool en)
         else
             CSRC(sie, SIE_STIE);
     } else {
-        irqc_set_enbl(int_id, en);
-        irqc_set_prio(int_id);
+        irqc_config_irq(int_id, en);
     }
 }
 
