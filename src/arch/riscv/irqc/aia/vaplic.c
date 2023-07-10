@@ -607,6 +607,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
     vcpuid_t hart_index = (new_val >> APLIC_TARGET_HART_IDX_SHIFT) & APLIC_TARGET_HART_IDX_MASK;
     uint8_t priority = new_val & APLIC_IPRIOLEN;
     cpuid_t pcpu_id = vm_translate_to_pcpuid(vcpu->vm, hart_index);
+    vcpuid_t prev_hart_index = 0; 
 
     spin_lock(&vaplic->lock);
     if(pcpu_id == INVALID_CPUID){
@@ -625,6 +626,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
     }
     if (vaplic_get_active(vcpu, intp_id) && 
         vaplic_get_target(vcpu, intp_id) != new_val) {
+        prev_hart_index = vaplic_get_hart_index(vcpu, intp_id);
         if(vaplic_get_hw(vcpu, intp_id)){
             aplic_set_target_hart(intp_id, pcpu_id);
             aplic_set_target_prio(intp_id, priority);
@@ -632,6 +634,9 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
         }
         vaplic->target[intp_id] = (hart_index << APLIC_TARGET_HART_IDX_SHIFT) |
                                    priority;
+        if(prev_hart_index != hart_index){
+            vaplic_update_hart_line(vcpu, prev_hart_index);
+        }
         vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
