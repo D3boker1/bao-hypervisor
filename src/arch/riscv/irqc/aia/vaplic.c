@@ -1097,16 +1097,26 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id){
  */
 static bool vaplic_domain_emul_reserved (uint16_t addr) {
     bool ret = false;
-    if (ADDR_INSIDE_RANGE(addr, reserved1, setip)       ||
-        ADDR_INSIDE_RANGE(addr, reserved2, setipnum)    ||
-        ADDR_INSIDE_RANGE(addr, reserved3, in_clrip)    ||
-        ADDR_INSIDE_RANGE(addr, reserved4, clripnum)    ||
-        ADDR_INSIDE_RANGE(addr, reserved5, setie)       ||
-        ADDR_INSIDE_RANGE(addr, reserved6, setienum)    ||
-        ADDR_INSIDE_RANGE(addr, reserved7, clrie)       ||
-        ADDR_INSIDE_RANGE(addr, reserved8, clrienum)    ||
-        ADDR_INSIDE_RANGE(addr, reserved9, setipnum_le) ||
-        ADDR_INSIDE_RANGE(addr, reserved10, genmsi)){
+    if (in_range(addr, offsetof(struct aplic_global_hw, reserved1),  
+                                   sizeof(aplic_global->reserved1) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved2),  
+                                   sizeof(aplic_global->reserved2) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved3),  
+                                   sizeof(aplic_global->reserved3) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved4),  
+                                   sizeof(aplic_global->reserved4) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved5),  
+                                   sizeof(aplic_global->reserved5) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved6),  
+                                   sizeof(aplic_global->reserved6) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved7),  
+                                   sizeof(aplic_global->reserved7) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved8),  
+                                   sizeof(aplic_global->reserved8) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved9),  
+                                   sizeof(aplic_global->reserved9) -4)    ||
+        in_range(addr, offsetof(struct aplic_global_hw, reserved10), 
+                                   sizeof(aplic_global->reserved10)-4)){
         ret = true;
     }
     return ret;
