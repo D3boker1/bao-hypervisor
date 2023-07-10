@@ -26,10 +26,6 @@
                          (addr >= offsetof(struct aplic_global_hw, start) &&\
                           addr  < offsetof(struct aplic_global_hw, end))
 
-#define GET_HART_INDEX(vcpu, intp_id) ((vaplic_get_target(vcpu, intp_id) >> \
-                                        APLIC_TARGET_HART_IDX_SHIFT) & \
-                                        APLIC_TARGET_HART_IDX_MASK)
-
 /**
  * @brief Returns if a given interrupt is valid
  * 
@@ -62,6 +58,18 @@ void vaplic_set_hw(struct vm *vm, irqid_t intp_id)
     if (intp_id < APLIC_MAX_INTERRUPTS) {
         bitmap_set(vm->arch.vaplic.hw,intp_id);
     }
+}
+
+/**
+ * @brief Returns the target hart index of a given interrupt
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt ID
+ * @return vcpuid_t target hart index of the given interrupt
+ */
+static inline vcpuid_t vaplic_get_hart_index(struct vcpu *vcpu, irqid_t intp_id){
+    return (vaplic_get_target(vcpu, intp_id) >> APLIC_TARGET_HART_IDX_SHIFT) &
+                                                APLIC_TARGET_HART_IDX_MASK;
 }
 
 /**
@@ -157,7 +165,7 @@ static bool vaplic_update_topi(struct vcpu* vcpu){
 
     /** Find highest pending and enabled interrupt */
     for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++) {
-        if (GET_HART_INDEX(vcpu, i) == vcpu->id) {
+        if (vaplic_get_hart_index(vcpu, i) == vcpu->id) {
             if (vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i)) {
                 prio = vaplic_get_target(vcpu, i) & APLIC_TARGET_IPRIO_MASK; 
                 if (prio < intp_prio) {
@@ -346,7 +354,7 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
         } else {
             BIT32_SET_INTP(vaplic->active, intp_id);
         }
-        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
+        vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
 }
@@ -390,7 +398,7 @@ static void vaplic_set_setip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
         //     i < (reg*APLIC_NUM_INTP_PER_REG) + APLIC_NUM_INTP_PER_REG; i++){
         //     if (!!bit32_get(new_val, i%32)){
         //         if(vaplic_set_pend(vcpu, i)){
-        //             vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, i));
+        //             vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, i));
         //         }
         //     }
         // }
@@ -409,7 +417,7 @@ static void vaplic_set_setipnum(struct vcpu *vcpu, uint32_t new_val){
 
     spin_lock(&vaplic->lock);
     if(vaplic_set_pend(vcpu, new_val)){
-        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
+        vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, new_val));
     }
     spin_unlock(&vaplic->lock);
 }
@@ -445,7 +453,7 @@ static void vaplic_set_in_clrip(struct vcpu *vcpu, uint8_t reg, uint32_t new_val
         //         } else {
         //             BIT32_CLR_INTP(vaplic->ip, i);
         //         }
-        //         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, i));
+        //         vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, i));
         //     }
         // }
     }
@@ -486,7 +494,7 @@ static void vaplic_set_clripnum(struct vcpu *vcpu, uint32_t new_val){
         } else {
             BIT32_CLR_INTP(vaplic->ip, new_val);
         }
-        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
+        vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, new_val));
     }
     spin_unlock(&vaplic->lock);
 }
@@ -536,7 +544,7 @@ static void vaplic_set_setie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
         //             aplic_set_enbl(i);
         //         } 
         //         BIT32_SET_INTP(vaplic->ie, i);
-        //         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, i));
+        //         vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, i));
         //     }
         // }
     }
@@ -559,7 +567,7 @@ static void vaplic_set_setienum(struct vcpu *vcpu, uint32_t new_val){
             aplic_set_enbl(new_val);
         } 
         BIT32_SET_INTP(vaplic->ie, new_val);
-        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
+        vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, new_val));
     }
     spin_unlock(&vaplic->lock);
 }
@@ -589,7 +597,7 @@ static void vaplic_set_clrie(struct vcpu *vcpu, uint8_t reg, uint32_t new_val){
         //             aplic_clr_enbl(i);
         //         }
         //         BIT32_CLR_INTP(vaplic->ie, i);
-        //         vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, i));
+        //         vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, i));
         //     }
         // }
     }
@@ -612,7 +620,7 @@ static void vaplic_set_clrienum(struct vcpu *vcpu, uint32_t new_val){
             aplic_clr_enbl(new_val);
         }
         BIT32_CLR_INTP(vaplic->ie, new_val);
-        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, new_val));
+        vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, new_val));
     }
     spin_unlock(&vaplic->lock);
 }
@@ -660,7 +668,7 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
         } else {
             vaplic->target[intp_id] = new_vaplic_target;
         }
-        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
+        vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
 }
@@ -1083,7 +1091,7 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id){
     spin_lock(&vaplic->lock);
     /** If the intp was successfully injected, update the heart line. */
     if (vaplic_set_pend(vcpu, intp_id)){
-        vaplic_update_hart_line(vcpu, GET_HART_INDEX(vcpu, intp_id));
+        vaplic_update_hart_line(vcpu, vaplic_get_hart_index(vcpu, intp_id));
     }
     spin_unlock(&vaplic->lock);
 }
