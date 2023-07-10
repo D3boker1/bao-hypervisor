@@ -102,6 +102,11 @@ void aplic_clr_pend(irqid_t intp_id)
     aplic_global->clripnum = intp_id;
 }
 
+void aplic_clr32_pend(uint8_t reg_indx, uint32_t reg_val)
+{
+    aplic_global->in_clrip[reg_indx] = reg_val;
+}
+
 uint32_t aplic_get_inclrip(uint8_t reg_indx)
 {
     return aplic_global->in_clrip[reg_indx];

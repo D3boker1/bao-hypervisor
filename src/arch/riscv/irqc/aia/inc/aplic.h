@@ -167,6 +167,15 @@ uint32_t aplic_get32_pend(uint8_t reg_indx);
 void aplic_clr_pend(irqid_t intp_id);
 
 /**
+ * @brief Modifies the pending bits for interrupt
+ *        sources reg_indx × 32 through reg_indx × 32 + 31.
+ * 
+ * @param reg_indx register index
+ * @return register value to be written.
+ */
+void aplic_clr32_pend(uint8_t reg_indx, uint32_t reg_val);
+
+/**
  * @brief Read the current rectified value for interrupt sources 
  *        reg_indx × 32 through reg_indx × 32 + 31. 
  * 
