@@ -619,11 +619,12 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
     }
     
     new_val &= APLIC_TARGET_DIRECT_MASK;
+    if (priority == 0){
+        new_val |= APLIC_TARGET_MAX_PRIO;
+        priority = APLIC_TARGET_MAX_PRIO;
+    }
     if (vaplic_get_active(vcpu, intp_id) && 
         vaplic_get_target(vcpu, intp_id) != new_val) {
-        if (priority == 0) {
-            priority = APLIC_TARGET_MAX_PRIO;
-        }
         if(vaplic_get_hw(vcpu, intp_id)){
             aplic_set_target_hart(intp_id, pcpu_id);
             aplic_set_target_prio(intp_id, priority);
