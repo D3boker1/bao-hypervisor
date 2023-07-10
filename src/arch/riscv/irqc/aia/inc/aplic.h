@@ -34,7 +34,6 @@ typedef cpuid_t idcid_t;
 #define APLIC_SOURCECFG_SM_EDGE_FALL    (0x5)
 #define APLIC_SOURCECFG_SM_LEVEL_HIGH   (0x6)
 #define APLIC_SOURCECFG_SM_LEVEL_LOW    (0x7)
-#define APLIC_SOURCECFG_SM_DEFAULT      APLIC_SOURCECFG_SM_INACTIVE
 
 /** APLIC fields and masks defines */
 #define APLIC_DOMAINCFG_DM              (1U << 2)
@@ -50,7 +49,8 @@ typedef cpuid_t idcid_t;
 #define APLIC_TARGET_IPRIO_MASK         (0xFF)
 #define APLIC_TARGET_EEID_MASK          (0x7FF)
 #define APLIC_TARGET_GUEST_INDEX_MASK   (0x3F)
-#define APLIC_TARGET_PRIO_DEFAULT       (1)
+#define APLIC_TARGET_MIN_PRIO           (0xFF)
+#define APLIC_TARGET_MAX_PRIO           (0x01)
 #define APLIC_TARGET_DIRECT_MASK        (0xFFFC00FF)
 #define APLIC_TARGET_MSI_MASK           (0xFFFFF7FF)
 
@@ -139,7 +139,7 @@ void aplic_set_pend(irqid_t intp_id);
  * @param reg_indx register index
  * @param reg_val register value to be written.
  */
-void aplic_set32_pend(uint8_t reg_indx, uint32_t reg_val);
+void aplic_set_pend_reg(size_t reg_indx, uint32_t reg_val);
 
 /**
  * @brief Read the pending value of a given interrut
@@ -157,7 +157,7 @@ bool aplic_get_pend(irqid_t intp_id);
  * @param reg_indx register index
  * @return a 32 bit value containing interrupts pending state for reg_indx.
  */
-uint32_t aplic_get32_pend(uint8_t reg_indx);
+uint32_t aplic_get_pend_reg(size_t reg_indx);
 
 /**
  * @brief Clear a pending bit from a inetrrupt writting to in_clripnum.
@@ -173,7 +173,7 @@ void aplic_clr_pend(irqid_t intp_id);
  * @param reg_indx register index
  * @return register value to be written.
  */
-void aplic_clr32_pend(uint8_t reg_indx, uint32_t reg_val);
+void aplic_clr_pend_reg(size_t reg_indx, uint32_t reg_val);
 
 /**
  * @brief Read the current rectified value for interrupt sources 
@@ -182,7 +182,7 @@ void aplic_clr32_pend(uint8_t reg_indx, uint32_t reg_val);
  * @param reg_indx register index
  * @return a 32 bit value containing interrupts rectified state for reg_indx.
  */
-uint32_t aplic_get_inclrip(uint8_t reg_indx);
+uint32_t aplic_get_inclrip_reg(size_t reg_indx);
 
 /**
  * @brief Enable a given interrupt
@@ -198,7 +198,7 @@ void aplic_set_enbl(irqid_t intp_id);
  * @param reg_indx register index
  * @param reg_val register value to be written.
  */
-void aplic_set32_enbl(uint8_t reg_indx, uint32_t reg_val);
+void aplic_set_enbl_reg(size_t reg_indx, uint32_t reg_val);
 
 /**
  * @brief Read the enable value of a given interrut
@@ -223,7 +223,7 @@ void aplic_clr_enbl(irqid_t intp_id);
  * @param reg_indx register index
  * @param reg_val register value to be written.
  */
-void aplic_clr32_enbl(uint8_t reg_indx, uint32_t reg_val);
+void aplic_clr_enbl_reg(size_t reg_indx, uint32_t reg_val);
 
 /**
  * @brief Write to register target (see AIA spec 0.3.2 section 4.5.16)
@@ -254,6 +254,8 @@ void aplic_clr32_enbl(uint8_t reg_indx, uint32_t reg_val);
  */
 void aplic_set_target(irqid_t intp_id, uint32_t val);
 
+void aplic_set_target_prio(irqid_t intp_id, uint8_t prio);
+void aplic_set_target_hart(irqid_t intp_id, cpuid_t hart);
 /**
  * @brief Read the target configurations for a given interrupt
  * 
@@ -262,8 +264,11 @@ void aplic_set_target(irqid_t intp_id, uint32_t val);
  */
 uint32_t aplic_get_target(irqid_t intp_id);
 
+uint8_t aplic_get_target_prio(irqid_t intp_id);
+cpuid_t aplic_get_target_hart(irqid_t intp_id);
+
 /**
- * @brief Returns the highest pending and enabled interrupt.
+ * @brief Returns the highest pending and enabled interrupt id.
  * 
  * Claimi has the same value as topi. However, reading claimi has the side 
  * effect of clearing the pending bit for the reported interrupt identity.
@@ -271,7 +276,7 @@ uint32_t aplic_get_target(irqid_t intp_id);
  * @param idc_id IDC to read and clear the pending-bit the highest-priority
  * @return uint32_t returns the interrupt identity and interrupt priority.
  */
-uint32_t aplic_idc_get_claimi(idcid_t idc_id);
+irqid_t aplic_idc_get_claimi_intpid(idcid_t idc_id);
 
 /**
  * @brief Handles an incomming interrupt in irq controller.
