@@ -11,7 +11,7 @@
 #include <cpu.h>
 #include <vaplic.h>
 
-#define IRQC_MAX_INTERRUPTS (1024)
+#define IRQC_MAX_INTERRUPTS (APLIC_MAX_INTERRUPTS)
 
 #define HART_REG_OFF APLIC_IDC_OFF
 #define IRQC_HART_INST APLIC_DOMAIN_NUM_HARTS

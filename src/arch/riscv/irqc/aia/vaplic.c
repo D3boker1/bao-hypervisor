@@ -121,7 +121,8 @@ static bool vaplic_get_active(struct vcpu *vcpu, irqid_t intp_id){
 /**
  * @brief Set a given interrupt as pending
  * 
- * @precondition 
+ * @pre This function should only be called by a function that 
+ *      has taken the lock.
  * 
  * @param vcpu virtual cpu
  * @param intp_id interrupt id
