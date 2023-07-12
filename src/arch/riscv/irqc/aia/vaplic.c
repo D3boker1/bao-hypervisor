@@ -83,6 +83,14 @@ static bool vaplic_get_hw(struct vcpu* vcpu, irqid_t intp_id){
     return ret;
 }
 
+/**
+ * @brief Returns if a given interrupt is pending
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt ID
+ * @return true if the interrupt is pending
+ * @return false if the interrupt is NOT pending
+ */
 static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
@@ -92,6 +100,14 @@ static bool vaplic_get_pend(struct vcpu *vcpu, irqid_t intp_id){
     return ret;
 }
 
+/**
+ * @brief Returns if a given interrupt is enbaled 
+ * 
+ * @param vcpu virtual cpu
+ * @param intp_id interrupt ID
+ * @return true if the interrupt is enabled
+ * @return false if the interrupt is NOT enabled
+ */
 static bool vaplic_get_enbl(struct vcpu *vcpu, irqid_t intp_id){
     uint32_t ret = 0;
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
