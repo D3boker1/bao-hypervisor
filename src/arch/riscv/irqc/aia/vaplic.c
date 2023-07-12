@@ -385,7 +385,7 @@ static void vaplic_set_setip(struct vcpu *vcpu, size_t reg, uint32_t new_val){
     if (reg < APLIC_NUM_SETIx_REGS) {
         new_val &= vaplic->active[reg];
         update_intps = ~(vaplic->ip[reg]) & new_val;
-        vaplic->ip[reg] = new_val;
+        vaplic->ip[reg] |= new_val;
         for(size_t i = (reg*APLIC_NUM_INTP_PER_REG); 
             i < (reg*APLIC_NUM_INTP_PER_REG) + APLIC_NUM_INTP_PER_REG; i++){
             if (!!bit32_get(update_intps, i%32)){
