@@ -51,7 +51,7 @@ typedef cpuid_t idcid_t;
 #define APLIC_TARGET_GUEST_INDEX_MASK   (0x3F)
 #define APLIC_TARGET_MIN_PRIO           (0xFF)
 #define APLIC_TARGET_MAX_PRIO           (0x01)
-#define APLIC_TARGET_DIRECT_MASK        (0xFFFC00FF)
+#define APLIC_TARGET_DIRECT_MASK        (0xFFFC0000 | APLIC_IPRIOLEN)
 #define APLIC_TARGET_MSI_MASK           (0xFFFFF7FF)
 
 #define IDC_CLAIMI_INTP_ID_SHIFT        (16)
