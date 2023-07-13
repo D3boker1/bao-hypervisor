@@ -90,19 +90,31 @@ void interrupts_vm_assign(struct vm *vm, irqid_t id)
     bitmap_set(global_interrupt_bitmap, id);
 }
 
-void interrupts_reserve(irqid_t pintp_id, irq_handler_t handler)
+/**
+ * @brief This function reserves a physical inetrrupt for hypervisor use.
+ * 
+ *        This function will call interrupts_arch_reserve function. 
+ *        This function returns an interrupt id, corresponding to 
+ *        the interrupt ID with which every operation needs to be 
+ *        carried out. Thus, after reserving an interrupt, to 
+ *        configure it, the returned irq ID must be used.
+ * 
+ * @param pintp_id 
+ * @param handler 
+ * @return irqid_t 
+ */
+irqid_t interrupts_reserve(irqid_t pintp_id, irq_handler_t handler)
 {
     irqid_t intp_id = 0;
     if ((pintp_id < MAX_INTERRUPTS) && !interrupt_is_reserved(pintp_id)) {
-        interrupt_handlers[pintp_id] = handler;
         bitmap_set(hyp_interrupt_bitmap, pintp_id);
         bitmap_set(global_interrupt_bitmap, pintp_id);
-        // INFO("pintp %d reserved", pintp_id);
         intp_id = interrupts_arch_reserve(pintp_id);
         if ((intp_id != pintp_id) && intp_id != 0){
             bitmap_set(hyp_interrupt_bitmap, intp_id);
             bitmap_set(global_interrupt_bitmap, intp_id);
-            // INFO("pintp %d reserved", intp_id);
         }
+        interrupt_handlers[intp_id] = handler;
     }
+    return intp_id;
 }

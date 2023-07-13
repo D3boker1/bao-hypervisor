@@ -681,7 +681,6 @@ static void vaplic_set_target(struct vcpu *vcpu, irqid_t intp_id, uint32_t new_v
     uint8_t priority = new_val & APLIC_IPRIOLEN;
     #elif (IRQC == AIA)
     uint8_t target_guest = (new_val >> APLIC_TARGET_GUEST_IDX_SHIFT) & APLIC_TARGET_GUEST_INDEX_MASK;
-    // Deviamos estar a invocar aqui a função para atribuir um MSI ID.
     irqid_t target_eiid = new_val & APLIC_TARGET_EEID_MASK;
     #endif
     cpuid_t pcpu_id = vm_translate_to_pcpuid(vcpu->vm, hart_index);

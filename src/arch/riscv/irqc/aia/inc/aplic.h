@@ -308,10 +308,8 @@ irqid_t aplic_idc_get_claimi_intpid(idcid_t idc_id);
  */
 void aplic_handle(void);
 
-irqid_t aplic_find_msi_id_available(/* irqid_t msi_id */);
-
 irqid_t aplic_get_pintp_id_from_msi_id(irqid_t msi_id);
 
-void aplic_link_msi_id_to_pintp(irqid_t intp_id, irqid_t pintp_id);
+void aplic_link_msi_id_to_pintp(irqid_t msi_id, irqid_t pintp_id);
 
 #endif //APLIC_H

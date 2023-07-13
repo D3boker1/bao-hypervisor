@@ -85,6 +85,10 @@ void imsic_set_enbl(irqid_t intp_id);
  */
 void imsic_send_msi(cpuid_t target_cpu, size_t imsic_file, irqid_t ipi_id);
 
+ssize_t imsic_find_available_msi(void);
+
+void imsic_reserve_msi(irqid_t msi_id);
+
 /**
  * @brief Handles interrupts in the IMSIC.
  * 

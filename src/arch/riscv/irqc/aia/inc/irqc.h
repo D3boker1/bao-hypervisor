@@ -56,20 +56,28 @@ static inline void irqc_cpu_init()
     #endif
 }
 
+/**
+ * @brief 
+ * 
+ *          Para já não estamos a fazer handling dos erros
+ * 
+ * @param pintp_id 
+ * @return irqid_t 
+ */
 static inline irqid_t irqc_reserve(irqid_t pintp_id){
     #if (IRQC == APLIC)
     return pintp_id;
     #elif (IRQC == AIA)
-    irqid_t intp_id = pintp_id;
-    if (pintp_id < IRQC_MSI_INTERRUPTS_START_ID){
-        intp_id = pintp_id;
+    irqid_t msi_id = 0;
+    if (pintp_id < APLIC_MAX_INTERRUPTS){
+        msi_id = imsic_find_available_msi();
+        aplic_link_msi_id_to_pintp(msi_id, pintp_id);
     } else {
-        intp_id = aplic_find_msi_id_available();
-        if(intp_id != 0 && intp_id != 1){
-            aplic_link_msi_id_to_pintp(intp_id, pintp_id);
-        }
+        msi_id = pintp_id - IRQC_TIMR_INT_ID;
     }
-    return intp_id;
+    imsic_reserve_msi(msi_id);
+    msi_id += IRQC_TIMR_INT_ID;
+    return msi_id;
     #else
     #error "IRQC not defined"
     #endif

@@ -11,6 +11,7 @@
 #include <interrupts.h>
 
 volatile struct imsic_global_hw* imsic[PLAT_CPU_NUM];
+BITMAP_ALLOC(msi_reserved, IMSIC_MAX_INTERRUPTS);
 
 void imsic_init(void){
     /** Every intp is triggrable */
@@ -49,6 +50,16 @@ void imsic_clr_pend(irqid_t intp_id){
 
 void imsic_send_msi(cpuid_t target_cpu, size_t imsic_file, irqid_t ipi_id){
     imsic[target_cpu]->file[imsic_file].seteipnum_le = ipi_id;
+}
+
+ssize_t imsic_find_available_msi(void){
+    return bitmap_find_nth(msi_reserved, IMSIC_MAX_INTERRUPTS, 1, 0, 0);
+}
+
+void imsic_reserve_msi(irqid_t msi_id){
+    // Should we check if the interrupt is already reserved?
+    // Should we validate the msi id range?
+    bitmap_set(msi_reserved, msi_id);
 }
 
 void imsic_handle(void){
