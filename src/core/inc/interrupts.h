@@ -33,6 +33,7 @@ void interrupts_vm_assign(struct vm *vm, irqid_t id);
 
 void interrupts_arch_init();
 void interrupts_arch_enable(irqid_t int_id, bool en);
+irqid_t interrupts_arch_reserve(irqid_t int_id);
 bool interrupts_arch_check(irqid_t int_id);
 void interrupts_arch_clear(irqid_t int_id);
 void interrupts_arch_ipi_send(cpuid_t cpu_target, irqid_t ipi_id);

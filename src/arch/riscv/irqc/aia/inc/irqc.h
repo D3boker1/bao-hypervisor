@@ -10,8 +10,29 @@
 #include <aplic.h>
 #include <cpu.h>
 #include <vaplic.h>
+#include <arch/sbi.h>
+#include <imsic.h>
 
-#define IRQC_MAX_INTERRUPTS (APLIC_MAX_INTERRUPTS)
+#define IRQC_TIMR_INT_ID (APLIC_MAX_INTERRUPTS + 1)
+#define IRQC_SOFT_INT_ID (APLIC_MAX_INTERRUPTS + 2)
+#if (IRQC == APLIC)
+#define IRQC_MAX_INTERRUPTS (IRQC_SOFT_INT_ID + 1)
+#elif (IRQC == AIA)
+/**
+ * Why IRQC_TIMR_INT_ID and not IRQC_SOFT_INT_ID?
+ * With the AIA specification, the software interrupt is now 
+ * delivered through the IMSIC, which means that the target
+ * hart will see it as an external interrupt.
+ * Thus, the total number of interrupts is the maximum number 
+ * of interrupts supported by aplic, the timer interrupt, the 
+ * maximum number of interrupts supported by imsic, and one 
+ * to support/keep "<" logic.
+ */
+#define IRQC_MAX_INTERRUPTS (IRQC_TIMR_INT_ID + IMSIC_MAX_INTERRUPTS + 1)
+#define IRQC_MSI_INTERRUPTS_START_ID (IRQC_SOFT_INT_ID + 1)
+#else
+#error "IRQC not defined"
+#endif
 
 #define HART_REG_OFF APLIC_IDC_OFF
 #define IRQC_HART_INST APLIC_DOMAIN_NUM_HARTS
@@ -26,39 +47,115 @@ static inline void irqc_init()
 
 static inline void irqc_cpu_init()
 {
+    #if (IRQC == APLIC)
     aplic_idc_init();
+    #elif (IRQC == AIA)
+    imsic_init();
+    #else
+    #error "IRQC not defined"
+    #endif
+}
+
+static inline irqid_t irqc_reserve(irqid_t pintp_id){
+    #if (IRQC == APLIC)
+    return pintp_id;
+    #elif (IRQC == AIA)
+    irqid_t intp_id = pintp_id;
+    if (pintp_id < IRQC_MSI_INTERRUPTS_START_ID){
+        intp_id = pintp_id;
+    } else {
+        intp_id = aplic_find_msi_id_available();
+        if(intp_id != 0 && intp_id != 1){
+            aplic_link_msi_id_to_pintp(intp_id, pintp_id);
+        }
+    }
+    return intp_id;
+    #else
+    #error "IRQC not defined"
+    #endif
+}
+
+static inline void irqc_send_ipi(cpuid_t target_cpu, irqid_t ipi_id)
+{
+    #if (IRQC == AIA)
+    imsic_send_msi(target_cpu, 0, ipi_id - IRQC_TIMR_INT_ID);
+    #elif (IRQC == APLIC)
+    sbi_send_ipi(1ULL << target_cpu, 0);
+    #else
+    #error "IRQC not defined"
+    #endif
 }
 
 static inline void irqc_config_irq(irqid_t int_id, bool en)
 {
+    irqid_t pintp_id = int_id;
+    #if (IRQC == AIA)
+    irqid_t msi_id = int_id - IRQC_TIMR_INT_ID;
+    #endif
+
     if (en){
-        aplic_set_sourcecfg(int_id, HYP_IRQ_SM_EDGE_RISE);
-        aplic_set_enbl(int_id);
-        aplic_set_target_hart(int_id, cpu()->id);
-        aplic_set_target_prio(int_id, HYP_IRQ_PRIO);
+        #if (IRQC == AIA)
+        imsic_set_enbl(msi_id);
+        pintp_id = aplic_get_pintp_id_from_msi_id(msi_id);
+        if (pintp_id == 0){
+            return;
+        }
+        #endif
+        aplic_set_sourcecfg(pintp_id, HYP_IRQ_SM_EDGE_RISE);
+        aplic_set_enbl(pintp_id);
+        aplic_set_target_hart(pintp_id, cpu()->id);
+        #if (IRQC == AIA)
+        aplic_set_target_eiid(pintp_id, msi_id);
+        // 0 means no guest. Is for hyp
+        aplic_set_target_guest(pintp_id, 0);
+        #else
+        aplic_set_target_prio(pintp_id, HYP_IRQ_PRIO);
+        #endif
     } else {
+        #if (IRQC == AIA)
+        imsic_clr_pend(msi_id);
+        pintp_id = aplic_get_pintp_id_from_msi_id(msi_id);
+        #endif
         /** 
-         *  We only need to set sourcecfg to inactive
+         *  For the APLIC We only need to set sourcecfg to inactive
          *  hardware will zero ip, ie, and target registers
         */
-        aplic_set_sourcecfg(int_id, HYP_IRQ_SM_INACTIVE);
+        aplic_set_sourcecfg(pintp_id, HYP_IRQ_SM_INACTIVE);
     }
-    
 }
 
 static inline void irqc_handle()
 {
+    #if (IRQC == APLIC)
     aplic_handle();
+    #elif (IRQC == AIA)
+    imsic_handle();
+    #else
+    #error "IRQC not defined"
+    #endif
 }
 
 static inline bool irqc_get_pend(irqid_t int_id)
 {
+    #if (IRQC == APLIC)
     return aplic_get_pend(int_id);
+    #elif (IRQC == AIA)
+    return imsic_get_pend(int_id - IRQC_TIMR_INT_ID);
+    #else
+    #error "IRQC not defined"
+    #endif
+    
 }
 
 static inline void irqc_clr_pend(irqid_t int_id)
 {
+    #if (IRQC == APLIC)
     aplic_clr_pend(int_id);
+    #elif (IRQC == AIA)
+    imsic_clr_pend(int_id - IRQC_TIMR_INT_ID);
+    #else
+    #error "IRQC not defined"
+    #endif
 }
 
 static inline void virqc_set_hw(struct vm *vm, irqid_t id)

@@ -11,8 +11,11 @@
 #include <plic.h>
 #include <cpu.h>
 #include <vplic.h>
+#include <arch/sbi.h>
 
 #define IRQC_MAX_INTERRUPTS (PLIC_MAX_INTERRUPTS)
+#define IRQC_TIMR_INT_ID (PLIC_MAX_INTERRUPTS + 1)
+#define IRQC_SOFT_INT_ID (PLIC_MAX_INTERRUPTS + 2)
 
 #define HART_REG_OFF PLIC_CLAIMCMPLT_OFF
 #define IRQC_HART_INST PLIC_PLAT_CNTXT_NUM
@@ -25,6 +28,11 @@ static inline void irqc_init()
 static inline void irqc_cpu_init()
 {
     plic_cpu_init();
+}
+
+static inline void irqc_send_ipi(cpuid_t target_cpu, irqid_t ipi_id)
+{
+    sbi_send_ipi(1ULL << target_cpu, 0);
 }
 
 static inline void irqc_config_irq(irqid_t int_id, bool en)

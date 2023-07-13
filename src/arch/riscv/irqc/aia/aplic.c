@@ -27,6 +27,7 @@
 volatile struct aplic_global_hw *aplic_global;
 volatile struct aplic_hart_hw *aplic_hart;
 uint8_t APLIC_IPRIOLEN = 0;
+irqid_t aplic_msi_id[APLIC_MAX_INTERRUPTS];
 
 void aplic_init(void)
 {
@@ -146,6 +147,12 @@ void aplic_set_target_prio(irqid_t intp_id, uint8_t prio)
     aplic_global->target[intp_id - 1] |= (prio & APLIC_TARGET_IPRIO_MASK);
 }
 
+void aplic_set_target_eiid(irqid_t intp_id, irqid_t eiid)
+{
+    aplic_global->target[intp_id - 1] &= ~(APLIC_TARGET_EEID_MASK);
+    aplic_global->target[intp_id - 1] |= (eiid & APLIC_TARGET_EEID_MASK);
+}
+
 void aplic_set_target_hart(irqid_t intp_id, cpuid_t hart)
 {
     aplic_global->target[intp_id - 1] &= ~(APLIC_TARGET_HART_IDX_MASK << 
@@ -153,15 +160,33 @@ void aplic_set_target_hart(irqid_t intp_id, cpuid_t hart)
     aplic_global->target[intp_id - 1] |= hart << APLIC_TARGET_HART_IDX_SHIFT;
 }
 
+void aplic_set_target_guest(irqid_t intp_id, uint8_t guest)
+{
+    aplic_global->target[intp_id - 1] &= ~(APLIC_TARGET_GUEST_INDEX_MASK << 
+                                           APLIC_TARGET_GUEST_IDX_SHIFT);
+    aplic_global->target[intp_id - 1] |= guest << APLIC_TARGET_GUEST_IDX_SHIFT;
+}
+
 uint8_t aplic_get_target_prio(irqid_t intp_id)
 {
     return aplic_global->target[intp_id - 1] & APLIC_TARGET_IPRIO_MASK;
+}
+
+irqid_t aplic_get_target_eiid(irqid_t intp_id)
+{
+    return aplic_global->target[intp_id - 1] & APLIC_TARGET_EEID_MASK;
 }
 
 cpuid_t aplic_get_target_hart(irqid_t intp_id)
 {
     return (aplic_global->target[intp_id - 1] >> APLIC_TARGET_HART_IDX_SHIFT) &
                                                  APLIC_TARGET_HART_IDX_MASK;
+}
+
+uint8_t aplic_get_target_guest(irqid_t intp_id)
+{
+    return (aplic_global->target[intp_id - 1] >> APLIC_TARGET_GUEST_IDX_SHIFT)&
+                                                 APLIC_TARGET_GUEST_INDEX_MASK;
 }
 
 irqid_t aplic_idc_get_claimi_intpid(idcid_t idc_id)
@@ -177,4 +202,31 @@ void aplic_handle(void){
     while((intp_identity = aplic_idc_get_claimi_intpid(idc_id)) > 0){
         interrupts_handle(intp_identity);
     }
+}
+
+// TODO: only 1 return point
+irqid_t aplic_find_msi_id_available(/* irqid_t msi_id */){
+    // if (aplic_msi_id[msi_id] == 0){
+    //     return msi_id;
+    // } else {
+        for (size_t i = 1; i < APLIC_MAX_INTERRUPTS; i++){
+            if (aplic_msi_id[i] == 0){
+                return i;
+            }
+        }
+    // }
+    return 0;
+}
+
+void aplic_link_msi_id_to_pintp(irqid_t intp_id, irqid_t pintp_id){
+    aplic_msi_id[pintp_id] = intp_id;
+}
+
+irqid_t aplic_get_pintp_id_from_msi_id(irqid_t msi_id){
+    for (size_t i = 0; i < APLIC_MAX_INTERRUPTS; i++){
+        if (aplic_msi_id[i] == msi_id){
+            return i;
+        }
+    }
+    return 0;
 }

@@ -51,6 +51,16 @@ static inline bool interrupt_is_reserved(irqid_t int_id)
     return bitmap_get(hyp_interrupt_bitmap, int_id);
 }
 
+/**
+ * @brief 
+ * 
+ *          When this function is called from imsic module, 
+ *          it will be always an hypervisor interrupt.
+ *          Because the intp_id will be always > (A)PLIC_MAX_INTERRUPT 
+ * 
+ * @param int_id 
+ * @return enum irq_res 
+ */
 enum irq_res interrupts_handle(irqid_t int_id)
 {
     if (vm_has_interrupt(cpu()->vcpu->vm, int_id)) {
@@ -80,11 +90,19 @@ void interrupts_vm_assign(struct vm *vm, irqid_t id)
     bitmap_set(global_interrupt_bitmap, id);
 }
 
-void interrupts_reserve(irqid_t int_id, irq_handler_t handler)
+void interrupts_reserve(irqid_t pintp_id, irq_handler_t handler)
 {
-    if (int_id < MAX_INTERRUPTS) {
-        interrupt_handlers[int_id] = handler;
-        bitmap_set(hyp_interrupt_bitmap, int_id);
-        bitmap_set(global_interrupt_bitmap, int_id);
+    irqid_t intp_id = 0;
+    if ((pintp_id < MAX_INTERRUPTS) && !interrupt_is_reserved(pintp_id)) {
+        interrupt_handlers[pintp_id] = handler;
+        bitmap_set(hyp_interrupt_bitmap, pintp_id);
+        bitmap_set(global_interrupt_bitmap, pintp_id);
+        // INFO("pintp %d reserved", pintp_id);
+        intp_id = interrupts_arch_reserve(pintp_id);
+        if ((intp_id != pintp_id) && intp_id != 0){
+            bitmap_set(hyp_interrupt_bitmap, intp_id);
+            bitmap_set(global_interrupt_bitmap, intp_id);
+            // INFO("pintp %d reserved", intp_id);
+        }
     }
 }
