@@ -242,7 +242,7 @@ static void vaplic_gen_msi(struct vcpu* vcpu, vcpuid_t vhart_index){
                  vaplic_get_pend(vcpu, i) && vaplic_get_enbl(vcpu, i) && 
                  domain_enbl) {
                 target_guest = vaplic_get_target_guest(vcpu, i);
-                imsic_send_msi(pcpu_id, target_guest, i);
+                imsic_inject_pend(target_guest, i);
                 CLR_INTP_REG(vaplic->ip, i);
             }
         }

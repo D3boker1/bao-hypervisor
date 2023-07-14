@@ -35,7 +35,7 @@ struct imsic_intp_file_hw
  */
 struct imsic_global_hw
 {
-    struct imsic_intp_file_hw file[IMSIC_NUM_FILES];
+    struct imsic_intp_file_hw s_file;
 }__attribute__((__packed__, aligned(0x1000ULL)));
 
 /**
@@ -83,7 +83,9 @@ void imsic_set_enbl(irqid_t intp_id);
  *                   N is for guest N;
  * @param ipi_id The ID of the IPI to send.
  */
-void imsic_send_msi(cpuid_t target_cpu, size_t imsic_file, irqid_t ipi_id);
+void imsic_send_msi(cpuid_t target_cpu, irqid_t ipi_id);
+
+void imsic_inject_pend(size_t guest_file, irqid_t intp_id);
 
 ssize_t imsic_find_available_msi(void);
 

@@ -13,6 +13,8 @@
 #define CSR_STOPEI			    (0x15c)
 #define CSR_STOPI			    (0xdb0)
 #define TOPI_IID_SHIFT			(16)
+#define CSR_VSISELECT			(0x250)
+#define CSR_VSIREG			    (0x251)
 
 #define IRQ_S_SOFT			    (1)
 #define IRQ_S_TIMER			    (5)

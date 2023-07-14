@@ -86,7 +86,7 @@ static inline irqid_t irqc_reserve(irqid_t pintp_id){
 static inline void irqc_send_ipi(cpuid_t target_cpu, irqid_t ipi_id)
 {
     #if (IRQC == AIA)
-    imsic_send_msi(target_cpu, 0, ipi_id - IRQC_TIMR_INT_ID);
+    imsic_send_msi(target_cpu, ipi_id - IRQC_TIMR_INT_ID);
     #elif (IRQC == APLIC)
     sbi_send_ipi(1ULL << target_cpu, 0);
     #else

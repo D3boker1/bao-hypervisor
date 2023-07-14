@@ -48,8 +48,18 @@ void imsic_clr_pend(irqid_t intp_id){
     CSRC(CSR_SIREG, 1ULL << (intp_id%64));
 }
 
-void imsic_send_msi(cpuid_t target_cpu, size_t imsic_file, irqid_t ipi_id){
-    imsic[target_cpu]->file[imsic_file].seteipnum_le = ipi_id;
+/**
+ * For now we only support 1 guest file per hart.
+ * Should I remove the guest_file from the API? 
+ */
+void imsic_inject_pend(size_t guest_file, irqid_t intp_id){
+    // vcpu->regs.hstatus = (guest_file << HSTATUS_VGEIN_OFF);
+    CSRW(CSR_VSISELECT, IMSIC_EIP+(intp_id/64));
+    CSRC(CSR_VSIREG, 1ULL << (intp_id%64));
+}
+
+void imsic_send_msi(cpuid_t target_cpu, irqid_t ipi_id){
+    imsic[target_cpu]->s_file.seteipnum_le = ipi_id;
 }
 
 ssize_t imsic_find_available_msi(void){
