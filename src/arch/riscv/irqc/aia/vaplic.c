@@ -671,7 +671,7 @@ static uint32_t vaplic_get_target(struct vcpu *vcpu, irqid_t intp_id){
     struct vaplic * vaplic = &vcpu->vm->arch.vaplic;
     uint32_t ret = 0;
     
-    if (vaplic_intp_valid(vcpu, intp_id)){
+    if (vaplic_intp_valid(intp_id)){
         ret = vaplic->target[intp_id];
     }
     return ret;
