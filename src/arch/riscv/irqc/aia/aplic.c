@@ -57,6 +57,9 @@ void aplic_init(void)
     }
     APLIC_IPRIOLEN = aplic_global->target[0] & APLIC_TARGET_IPRIO_MASK; 
     aplic_global->domaincfg |= APLIC_DOMAINCFG_IE;
+    #if (IRQC == AIA)
+    aplic_global->domaincfg |= APLIC_DOMAINCFG_DM;
+    #endif
 }
 
 void aplic_idc_init(void){
