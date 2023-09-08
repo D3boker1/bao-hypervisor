@@ -30,6 +30,11 @@ static inline void irqc_cpu_init()
     plic_cpu_init();
 }
 
+static inline irqid_t irqc_reserve(irqid_t pintp_id)
+{
+    return pintp_id;
+}
+
 static inline void irqc_send_ipi(cpuid_t target_cpu, irqid_t ipi_id)
 {
     sbi_send_ipi(1ULL << target_cpu, 0);
