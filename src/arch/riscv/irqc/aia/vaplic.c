@@ -342,7 +342,7 @@ static void vaplic_set_sourcecfg(struct vcpu *vcpu, irqid_t intp_id, uint32_t ne
         if(new_val == 2 || new_val == 3)
             new_val = APLIC_SOURCECFG_SM_INACTIVE;
         
-        /** Only edge sense can be virtualized for know */
+        /** Only edge sense can be virtualized for now */
         if(new_val  == APLIC_SOURCECFG_SM_LEVEL_HIGH){
             new_val = APLIC_SOURCECFG_SM_EDGE_RISE;
         } else if (new_val  == APLIC_SOURCECFG_SM_LEVEL_LOW){
