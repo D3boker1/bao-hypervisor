@@ -51,9 +51,6 @@ struct arch_vm_platform {
             struct {
                 paddr_t base;
             } aplic;
-            struct {
-                paddr_t base;
-            } imsic;
         } aia;
     } irqc;
 };
