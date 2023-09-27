@@ -26,7 +26,7 @@
 /** APLIC public data */
 volatile struct aplic_control_hw *aplic_control;
 volatile struct aplic_idc_hw *aplic_idc;
-uint8_t APLIC_IPRIOLEN = 0;
+uint8_t APLIC_IPRIO_MASK = 0;
 
 void aplic_init(void)
 {
@@ -54,7 +54,7 @@ void aplic_init(void)
         aplic_control->sourcecfg[i] = APLIC_SOURCECFG_SM_INACTIVE;
         aplic_control->target[i] = APLIC_TARGET_MIN_PRIO;
     }
-    APLIC_IPRIOLEN = aplic_control->target[0] & APLIC_TARGET_IPRIO_MASK; 
+    APLIC_IPRIO_MASK = aplic_control->target[0] & APLIC_TARGET_IPRIO_MASK; 
     aplic_control->domaincfg |= APLIC_DOMAINCFG_IE;
 }
 
