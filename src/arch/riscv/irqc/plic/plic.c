@@ -30,7 +30,7 @@ static size_t plic_scan_max_int()
 
 void plic_init()
 {
-    /** Maps APLIC device */
+    /** Maps PLIC device */
     plic_global = (void*) mem_alloc_map_dev(&cpu()->as, SEC_HYP_GLOBAL, INVALID_VA, 
             platform.arch.irqc.plic.base, NUM_PAGES(sizeof(struct plic_global_hw)));
     
