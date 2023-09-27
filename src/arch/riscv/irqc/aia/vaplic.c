@@ -1092,26 +1092,26 @@ void vaplic_inject(struct vcpu *vcpu, irqid_t intp_id){
  */
 static bool vaplic_domain_emul_reserved (uint16_t addr) {
     bool ret = false;
-    if (in_range(addr, offsetof(struct aplic_global_hw, reserved1),  
-                                   sizeof(aplic_global->reserved1) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved2),  
-                                   sizeof(aplic_global->reserved2) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved3),  
-                                   sizeof(aplic_global->reserved3) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved4),  
-                                   sizeof(aplic_global->reserved4) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved5),  
-                                   sizeof(aplic_global->reserved5) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved6),  
-                                   sizeof(aplic_global->reserved6) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved7),  
-                                   sizeof(aplic_global->reserved7) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved8),  
-                                   sizeof(aplic_global->reserved8) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved9),  
-                                   sizeof(aplic_global->reserved9) -4)    ||
-        in_range(addr, offsetof(struct aplic_global_hw, reserved10), 
-                                   sizeof(aplic_global->reserved10)-4)){
+    if (in_range(addr, offsetof(struct aplic_control_hw, reserved1),  
+                                   sizeof(aplic_control->reserved1) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved2),  
+                                   sizeof(aplic_control->reserved2) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved3),  
+                                   sizeof(aplic_control->reserved3) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved4),  
+                                   sizeof(aplic_control->reserved4) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved5),  
+                                   sizeof(aplic_control->reserved5) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved6),  
+                                   sizeof(aplic_control->reserved6) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved7),  
+                                   sizeof(aplic_control->reserved7) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved8),  
+                                   sizeof(aplic_control->reserved8) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved9),  
+                                   sizeof(aplic_control->reserved9) -4)    ||
+        in_range(addr, offsetof(struct aplic_control_hw, reserved10), 
+                                   sizeof(aplic_control->reserved10)-4)){
         ret = true;
     }
     return ret;
@@ -1141,7 +1141,7 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
     } else {
         switch (emul_addr >> 12){
             case 0:
-                if (emul_addr == offsetof(struct aplic_global_hw, domaincfg)) {
+                if (emul_addr == offsetof(struct aplic_control_hw, domaincfg)) {
                     vaplic_emul_domaincfg_access(acc);
                 } else {
                     vaplic_emul_srccfg_access(acc);
@@ -1149,28 +1149,28 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
                 break;
             case 1:
                 switch (emul_addr >> 7){
-                case offsetof(struct aplic_global_hw, setip) >> 7:
+                case offsetof(struct aplic_control_hw, setip) >> 7:
                     vaplic_emul_setip_access(acc);
                     break;
-                case offsetof(struct aplic_global_hw, setipnum) >> 7:
+                case offsetof(struct aplic_control_hw, setipnum) >> 7:
                     vaplic_emul_setipnum_access(acc);
                     break;
-                case offsetof(struct aplic_global_hw, in_clrip) >> 7:
+                case offsetof(struct aplic_control_hw, in_clrip) >> 7:
                     vaplic_emul_in_clrip_access(acc);
                     break;
-                case offsetof(struct aplic_global_hw, clripnum) >> 7:
+                case offsetof(struct aplic_control_hw, clripnum) >> 7:
                     vaplic_emul_clripnum_access(acc);
                     break;
-                case offsetof(struct aplic_global_hw, setie) >> 7:
+                case offsetof(struct aplic_control_hw, setie) >> 7:
                     vaplic_emul_setie_access(acc);
                     break;
-                case offsetof(struct aplic_global_hw, setienum) >> 7:
+                case offsetof(struct aplic_control_hw, setienum) >> 7:
                     vaplic_emul_setienum_access(acc);
                     break;
-                case offsetof(struct aplic_global_hw, clrie) >> 7:
+                case offsetof(struct aplic_control_hw, clrie) >> 7:
                     vaplic_emul_clrie_access(acc);
                     break;
-                case offsetof(struct aplic_global_hw, clrienum) >> 7:
+                case offsetof(struct aplic_control_hw, clrienum) >> 7:
                     vaplic_emul_clrienum_access(acc);
                     break;
                 default:
@@ -1179,7 +1179,7 @@ static bool vaplic_domain_emul_handler(struct emul_access *acc)
                 }
                 break;
             case 3:
-                if (emul_addr == offsetof(struct aplic_global_hw, genmsi)) {
+                if (emul_addr == offsetof(struct aplic_control_hw, genmsi)) {
                     read_only_zero = true;
                 } else {
                     vaplic_emul_target_access(acc);
@@ -1217,19 +1217,19 @@ static bool vaplic_idc_emul_handler(struct emul_access *acc)
                     & APLIC_MAX_NUM_HARTS_MAKS;
 
     switch (addr & 0x1F) {
-        case offsetof(struct aplic_hart_hw, idelivery):
+        case offsetof(struct aplic_idc_hw, idelivery):
             vaplic_emul_idelivery_access(acc, idc_id);
             break;
-        case offsetof(struct aplic_hart_hw, iforce):
+        case offsetof(struct aplic_idc_hw, iforce):
             vaplic_emul_iforce_access(acc, idc_id);
             break;
-        case offsetof(struct aplic_hart_hw, ithreshold):
+        case offsetof(struct aplic_idc_hw, ithreshold):
             vaplic_emul_ithreshold_access(acc, idc_id);
             break;
-        case offsetof(struct aplic_hart_hw, topi):
+        case offsetof(struct aplic_idc_hw, topi):
             vaplic_emul_topi_access(acc, idc_id);
             break;
-        case offsetof(struct aplic_hart_hw, claimi):
+        case offsetof(struct aplic_idc_hw, claimi):
             vaplic_emul_claimi_access(acc, idc_id);
             break;
         default:
@@ -1248,7 +1248,7 @@ void vaplic_init(struct vm *vm, const struct arch_vm_platform *arch_vm_platform)
 
         vm->arch.vaplic.aplic_domain_emul = (struct emul_mem) {
             .va_base = arch_vm_platform->irqc.aia.aplic.base,
-            .size = sizeof(struct aplic_global_hw),
+            .size = sizeof(struct aplic_control_hw),
             .handler = vaplic_domain_emul_handler
         };
 
@@ -1256,7 +1256,7 @@ void vaplic_init(struct vm *vm, const struct arch_vm_platform *arch_vm_platform)
 
         vm->arch.vaplic.aplic_idc_emul = (struct emul_mem) {
             .va_base = arch_vm_platform->irqc.aia.aplic.base + APLIC_IDC_OFF,
-            .size = sizeof(struct aplic_hart_hw)*vm->arch.vaplic.idc_num,
+            .size = sizeof(struct aplic_idc_hw)*vm->arch.vaplic.idc_num,
             .handler = vaplic_idc_emul_handler
         };
 

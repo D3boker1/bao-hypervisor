@@ -58,7 +58,7 @@ typedef cpuid_t idcid_t;
 #define IDC_CLAIMI_INTP_ID_MASK         (0x3FF)
 
 /** Data structures for APLIC devices */
-struct aplic_global_hw {
+struct aplic_control_hw {
     uint32_t domaincfg;
     uint32_t sourcecfg[APLIC_NUM_SRCCFG_REGS];
     uint8_t  reserved1[0x1C00 - 0x1000];
@@ -85,7 +85,7 @@ struct aplic_global_hw {
     uint32_t target[APLIC_NUM_TARGET_REGS];
 } __attribute__((__packed__, aligned(PAGE_SIZE)));
 
-struct aplic_hart_hw {
+struct aplic_idc_hw {
     uint32_t idelivery;
     uint32_t iforce;
     uint32_t ithreshold;
@@ -94,8 +94,8 @@ struct aplic_hart_hw {
     uint32_t claimi;
 }__attribute__((__packed__, aligned(APLIC_IDC_SIZE))); // IDC structure CANNOT be page aligned.
 
-extern volatile struct aplic_global_hw *aplic_global;
-extern volatile struct aplic_hart_hw *aplic_hart;
+extern volatile struct aplic_control_hw *aplic_control;
+extern volatile struct aplic_idc_hw *aplic_idc;
 extern uint8_t APLIC_IPRIOLEN;
 
 /**
