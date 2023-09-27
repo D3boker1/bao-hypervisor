@@ -12,7 +12,7 @@
 #define APLIC (2)
 
 struct arch_platform {
-    union {
+    union irqc_dscrp {
         struct {
             paddr_t base;
         } plic;
