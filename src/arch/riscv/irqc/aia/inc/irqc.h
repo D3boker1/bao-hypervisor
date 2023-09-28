@@ -37,13 +37,8 @@ static inline void irqc_config_irq(irqid_t int_id, bool en)
         aplic_set_target_hart(int_id, cpu()->id);
         aplic_set_target_prio(int_id, HYP_IRQ_PRIO);
     } else {
-        /** 
-         *  We only need to set sourcecfg to inactive
-         *  hardware will zero ip, ie, and target registers
-        */
-        aplic_set_sourcecfg(int_id, HYP_IRQ_SM_INACTIVE);
+        aplic_clr_enbl(int_id);
     }
-    
 }
 
 static inline void irqc_handle()
