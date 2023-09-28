@@ -59,6 +59,8 @@ struct arch_vm_platform {
 struct vm_arch {
     #if (IRQC == PLIC)
     struct vplic vplic;       
+    #elif ((IRQC == APLIC) || (IRQC == AIA))
+    struct vaplic vaplic;
     #else 
     #error "unknown IRQC type " IRQC
     #endif
