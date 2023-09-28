@@ -3,12 +3,13 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef __ARCH_VM_H__
-#define __ARCH_VM_H__
+#ifndef ARCH_VM_H
+#define ARCH_VM_H
 
 #include <bao.h>
-#include <arch/vplic.h>
+#include <irqc.h>
 #include <arch/sbi.h>
+#include <arch/interrupts.h>
 
 #define REG_RA (1)
 #define REG_SP (2)
@@ -43,11 +44,19 @@
 #define REG_T6 (31)
 
 struct arch_vm_platform {
-    paddr_t plic_base;
+    union vm_irqc_dscrp {
+        struct {
+            paddr_t base;
+        } plic;
+    } irqc;
 };
 
 struct vm_arch {
-    struct vplic vplic;
+    #if (IRQC == PLIC)
+    struct vplic vplic;       
+    #else 
+    #error "unknown IRQC type " IRQC
+    #endif
 };
 
 struct vcpu_arch {
@@ -113,12 +122,12 @@ void vcpu_arch_entry();
 
 static inline void vcpu_arch_inject_hw_irq(struct vcpu *vcpu, irqid_t id)
 {
-    vplic_inject(vcpu, id);
+    virqc_inject(vcpu, id);
 }
 
 static inline void vcpu_arch_inject_irq(struct vcpu *vcpu, irqid_t id)
 {
-    vplic_inject(vcpu, id);
+    virqc_inject(vcpu, id);
 }
 
 #endif /* __ARCH_VM_H__ */

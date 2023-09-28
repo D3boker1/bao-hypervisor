@@ -3,8 +3,8 @@
  * Copyright (c) Bao Project and Contributors. All rights reserved.
  */
 
-#ifndef __PLIC_H__
-#define __PLIC_H__
+#ifndef PLIC_H
+#define PLIC_H
 
 #include <bao.h>
 #include <platform.h>
@@ -61,4 +61,4 @@ struct plic_cntxt {
 int plic_plat_cntxt_to_id(struct plic_cntxt cntxt);
 struct plic_cntxt plic_plat_id_to_cntxt(int id);
 
-#endif /* __PLIC_H__ */
+#endif /* PLIC_H */
