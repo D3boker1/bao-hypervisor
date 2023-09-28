@@ -4,6 +4,7 @@
  */
 
 #include <platform.h>
+#include <interrupts.h>
 
 #ifndef IRQC
 #error "IRQC not defined for this platform "

@@ -9,6 +9,9 @@
 #include <bao.h>
 #include <irqc.h>
 
+#define PLIC  (1)
+#define APLIC (2)
+
 /**
  * In riscv, the ipi (software interrupt) and timer interrupts dont actually
  * have an ID as their are treated differently from external interrupts

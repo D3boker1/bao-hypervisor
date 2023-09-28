@@ -8,9 +8,6 @@
 
 #include <bao.h>
 
-#define PLIC  (1)
-#define APLIC (2)
-
 struct arch_platform {
     union irqc_dscrp {
         struct {
