@@ -7,6 +7,8 @@
 #include <cpu.h>
 #include <interrupts.h>
 #include <fences.h>
+#include <arch/opcodes.h>
+#include <arch/csrs.h>
 
 /** APLIC fields and masks defines */
 #define APLIC_DOMAINCFG_CTRL_MASK       (0x1FF)
@@ -197,13 +199,43 @@ irqid_t aplic_idc_get_claimi_intpid(idcid_t idc_id)
     return (aplic_hart[idc_id].claimi >> IDC_CLAIMI_INTP_ID_SHIFT) 
                                                     & IDC_CLAIMI_INTP_ID_MASK;
 }
-
+#define NUM_INTP 1000
 void aplic_handle(void){
+    static unsigned long num_intp = 0;
+    static unsigned long cycle_before_claim[NUM_INTP] = {0};
+    static unsigned long cycle_after_claim[NUM_INTP] = {0};
+    static unsigned long cache_misses_before_claim[NUM_INTP] = {0};
+    static unsigned long cache_misses_after_claim[NUM_INTP] = {0};
+    static unsigned long cycle_before_handle[NUM_INTP] = {0};
+    static unsigned long cycle_after_handle[NUM_INTP] = {0};
+    static unsigned long cache_misses_before_handle[NUM_INTP] = {0};
+    static unsigned long cache_misses_after_handle[NUM_INTP] = {0};
+
     irqid_t intp_identity = 0;
     idcid_t idc_id = cpu()->id;
 
-    if((intp_identity = aplic_idc_get_claimi_intpid(idc_id)) > 0){
+    cycle_before_claim[num_intp] = CSRR(CSR_CYCLE);
+    cache_misses_before_claim[num_intp] = CSRR(CSR_HPMCOUNTER3);
+    intp_identity = aplic_idc_get_claimi_intpid(idc_id);
+    cycle_after_claim[num_intp] = CSRR(CSR_CYCLE);
+    cache_misses_after_claim[num_intp] = CSRR(CSR_HPMCOUNTER3);
+
+    if(intp_identity > 0){
+        cycle_before_handle[num_intp] = CSRR(CSR_CYCLE);
+        cache_misses_before_handle[num_intp] = CSRR(CSR_HPMCOUNTER3);
         interrupts_handle(intp_identity);
+        cycle_after_handle[num_intp] = CSRR(CSR_CYCLE);
+        cache_misses_after_handle[num_intp] = CSRR(CSR_HPMCOUNTER3);
+    }
+    num_intp++;
+    if(num_intp == NUM_INTP){
+        for (size_t i = 0; i < NUM_INTP; i++){
+            printk("Result: %d\n", i);
+            printk("BCC: %ld\n", cycle_after_claim[i]-cycle_before_claim[i]);
+            printk("BMC: %ld\n", cache_misses_after_claim[i]-cache_misses_before_claim[i]);
+            printk("BCH: %ld\n", cycle_after_handle[i]-cycle_before_handle[i]);
+            printk("BMH: %ld\n", cache_misses_after_handle[i]-cache_misses_before_handle[i]);
+        }
     }
 }
 
