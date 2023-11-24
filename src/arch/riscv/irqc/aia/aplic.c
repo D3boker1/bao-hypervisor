@@ -202,7 +202,7 @@ void aplic_handle(void){
     irqid_t intp_identity = 0;
     idcid_t idc_id = cpu()->id;
 
-    while((intp_identity = aplic_idc_get_claimi_intpid(idc_id)) > 0){
+    if((intp_identity = aplic_idc_get_claimi_intpid(idc_id)) > 0){
         interrupts_handle(intp_identity);
     }
 }
