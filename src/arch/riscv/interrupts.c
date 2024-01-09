@@ -45,6 +45,10 @@ void interrupts_arch_ipi_send(cpuid_t target_cpu, irqid_t ipi_id)
     }
 }
 
+inline irqid_t interrupts_arch_reserve(irqid_t pint_id){
+    return irqc_reserve(pint_id);
+}
+
 void interrupts_arch_cpu_enable(bool en)
 {
     if (en) {

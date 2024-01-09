@@ -29,6 +29,14 @@ static inline void irqc_cpu_init()
     aplic_idc_init();
 }
 
+static inline irqid_t irqc_reserve(irqid_t pintp_id){
+    #if (IRQC == APLIC)
+    return pintp_id;
+    #else
+    #error "IRQC not defined"
+    #endif
+}
+
 static inline void irqc_config_irq(irqid_t int_id, bool en)
 {
     if (en) {

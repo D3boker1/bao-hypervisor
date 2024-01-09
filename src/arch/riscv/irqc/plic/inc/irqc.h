@@ -21,6 +21,11 @@ static inline void irqc_init()
     plic_init();
 }
 
+static inline irqid_t irqc_reserve(irqid_t pintp_id)
+{
+    return pintp_id;
+}
+
 static inline void irqc_cpu_init()
 {
     plic_cpu_init();
