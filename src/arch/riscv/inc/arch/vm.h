@@ -9,7 +9,6 @@
 #include <bao.h>
 #include <irqc.h>
 #include <arch/sbi.h>
-#include <arch/interrupts.h>
 
 #define REG_RA  (1)
 #define REG_SP  (2)

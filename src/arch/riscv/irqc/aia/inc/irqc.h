@@ -10,8 +10,29 @@
 #include <aplic.h>
 #include <cpu.h>
 #include <vaplic.h>
+#if (IRQC == APLIC)
+#include <arch/sbi.h>
+#elif (IRQC == AIA)
+#include <imsic.h>
+#endif
 
-#define IRQC_MAX_INTERRUPTS  (APLIC_MAX_INTERRUPTS)
+#define IRQC_TIMR_INT_ID (APLIC_MAX_INTERRUPTS + 1)
+#define IRQC_SOFT_INT_ID (APLIC_MAX_INTERRUPTS + 2)
+#if (IRQC == APLIC)
+#define IRQC_MAX_INTERRUPTS (IRQC_SOFT_INT_ID + 1)
+#elif (IRQC == AIA)
+/**
+ * Why IRQC_TIMR_INT_ID and not IRQC_SOFT_INT_ID? With the AIA specification, the software interrupt
+ * is now delivered through the IMSIC, which means that the target hart will see it as an external 
+ * interrupt. Thus, the total number of interrupts is the maximum number of interrupts supported by 
+ * aplic, the timer interrupt, the maximum number of interrupts supported by imsic, and one to 
+ * support/keep "<" logic.
+ */
+#define IRQC_MAX_INTERRUPTS (IRQC_TIMR_INT_ID + IMSIC_MAX_INTERRUPTS + 1)
+#define IRQC_MSI_INTERRUPTS_START_ID (IRQC_TIMR_INT_ID)
+#else
+#error "IRQC not defined"
+#endif
 
 #define HART_REG_OFF         APLIC_IDC_OFF
 #define IRQC_HART_INST       APLIC_DOMAIN_NUM_HARTS
@@ -29,11 +50,19 @@ static inline void irqc_cpu_init()
     aplic_idc_init();
 }
 
-static inline irqid_t irqc_reserve(irqid_t pintp_id){
+static inline irqid_t irqc_reserve(irqid_t pintp_id)
+{
     #if (IRQC == APLIC)
     return pintp_id;
     #else
     #error "IRQC not defined"
+    #endif
+}
+
+static inline void irqc_send_ipi(cpuid_t target_cpu, irqid_t ipi_id)
+{
+    #if (IRQC == APLIC)
+    sbi_send_ipi(1ULL << target_cpu, 0);
     #endif
 }
 

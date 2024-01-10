@@ -8,6 +8,9 @@
 
 #include <bao.h>
 
+#define PLIC  (1)
+#define APLIC (2)
+
 // Arch-specific platform data
 struct arch_platform {
     union irqc_dscrp {
