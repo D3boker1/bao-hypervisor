@@ -47,13 +47,30 @@ static inline void irqc_init()
 
 static inline void irqc_cpu_init()
 {
+    #if (IRQC == APLIC)
     aplic_idc_init();
+    #elif (IRQC == AIA)
+    imsic_init();
+    #else
+    #error "IRQC not defined"
+    #endif
 }
 
 static inline irqid_t irqc_reserve(irqid_t pintp_id)
 {
     #if (IRQC == APLIC)
     return pintp_id;
+    #elif (IRQC == AIA)
+    irqid_t msi_id = 0;
+    if (pintp_id < APLIC_MAX_INTERRUPTS){
+        msi_id = imsic_find_available_msi();
+        aplic_link_msi_id_to_pintp(msi_id, pintp_id);
+    } else {
+        msi_id = pintp_id - IRQC_MSI_INTERRUPTS_START_ID;
+    }
+    imsic_reserve_msi(msi_id);
+    msi_id += IRQC_MSI_INTERRUPTS_START_ID;
+    return msi_id;
     #else
     #error "IRQC not defined"
     #endif
@@ -63,34 +80,78 @@ static inline void irqc_send_ipi(cpuid_t target_cpu, irqid_t ipi_id)
 {
     #if (IRQC == APLIC)
     sbi_send_ipi(1ULL << target_cpu, 0);
+    #elif (IRQC == AIA)
+    imsic_send_msi(target_cpu, ipi_id - IRQC_MSI_INTERRUPTS_START_ID);
     #endif
 }
 
 static inline void irqc_config_irq(irqid_t int_id, bool en)
 {
+    irqid_t pintp_id = int_id;
+    #if (IRQC == AIA)
+    irqid_t msi_id = int_id - IRQC_MSI_INTERRUPTS_START_ID;
+    #endif
+
     if (en) {
-        aplic_set_sourcecfg(int_id, HYP_IRQ_SM_EDGE_RISE);
-        aplic_set_enbl(int_id);
-        aplic_set_target_hart(int_id, cpu()->id);
-        aplic_set_target_prio(int_id, HYP_IRQ_PRIO);
+        #if (IRQC == AIA)
+        imsic_set_enbl(msi_id);
+        pintp_id = aplic_get_pintp_id_from_msi_id(msi_id);
+        if (pintp_id == 0){
+            return;
+        }
+        #endif
+        aplic_set_sourcecfg(pintp_id, HYP_IRQ_SM_EDGE_RISE);
+        aplic_set_enbl(pintp_id);
+        aplic_set_target_hart(pintp_id, cpu()->id);
+        #if (IRQC == AIA)
+        aplic_set_target_eiid(pintp_id, msi_id);
+        // 0 means is for hypervisor use
+        aplic_set_target_guest(pintp_id, 0);
+        #elif (IRQC == APLIC)
+        aplic_set_target_prio(pintp_id, HYP_IRQ_PRIO);
+        #else
+        #error "IRQC not defined"
+        #endif
     } else {
-        aplic_clr_enbl(int_id);
+        #if (IRQC == AIA)
+        imsic_clr_pend(msi_id);
+        pintp_id = aplic_get_pintp_id_from_msi_id(msi_id);
+        #endif
+        aplic_clr_enbl(pintp_id);
     }
 }
 
 static inline void irqc_handle()
 {
+    #if (IRQC == APLIC)
     aplic_handle();
+    #elif (IRQC == AIA)
+    imsic_handle();
+    #else
+    #error "IRQC not defined"
+    #endif
 }
 
 static inline bool irqc_get_pend(irqid_t int_id)
 {
+    #if (IRQC == APLIC)
     return aplic_get_pend(int_id);
+    #elif (IRQC == AIA)
+    return imsic_get_pend(int_id - IRQC_MSI_INTERRUPTS_START_ID);
+    #else
+    #error "IRQC not defined"
+    #endif
 }
 
 static inline void irqc_clr_pend(irqid_t int_id)
 {
+    #if (IRQC == APLIC)
     aplic_clr_pend(int_id);
+    #elif (IRQC == AIA)
+    imsic_clr_pend(int_id - IRQC_MSI_INTERRUPTS_START_ID);
+    #else
+    #error "IRQC not defined"
+    #endif
 }
 
 static inline void virqc_set_hw(struct vm* vm, irqid_t id)

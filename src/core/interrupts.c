@@ -101,13 +101,12 @@ bool interrupts_vm_assign(struct vm* vm, irqid_t id)
     return ret;
 }
 
-bool interrupts_reserve(irqid_t pint_id, irq_handler_t handler)
+irqid_t interrupts_reserve(irqid_t pint_id, irq_handler_t handler)
 {
     irqid_t int_id = 0;
 
     spin_lock(&irq_reserve_lock);
     if ((pint_id < MAX_INTERRUPTS) && !interrupt_assigned(pint_id)) {
-        interrupt_handlers[pint_id] = handler;
         bitmap_set(hyp_interrupt_bitmap, pint_id);
         bitmap_set(global_interrupt_bitmap, pint_id);
 
@@ -116,8 +115,9 @@ bool interrupts_reserve(irqid_t pint_id, irq_handler_t handler)
             bitmap_set(hyp_interrupt_bitmap, int_id);
             bitmap_set(global_interrupt_bitmap, int_id);
         }
+        interrupt_handlers[int_id] = handler;
     }
     spin_unlock(&irq_reserve_lock);
 
-    return !!int_id;
+    return int_id;
 }

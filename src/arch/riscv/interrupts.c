@@ -60,11 +60,15 @@ void interrupts_arch_cpu_enable(bool en)
 void interrupts_arch_enable(irqid_t int_id, bool en)
 {
     if (int_id == SOFT_INT_ID) {
+        #if ((IRQC == PLIC) || ((IRQC == APLIC)))
         if (en) {
             CSRS(sie, SIE_SSIE);
         } else {
             CSRC(sie, SIE_SSIE);
         }
+        #elif (IRQC == AIA)
+        irqc_config_irq(int_id, en);
+        #endif
     } else if (int_id == TIMR_INT_ID) {
         if (en) {
             CSRS(sie, SIE_STIE);
@@ -78,6 +82,26 @@ void interrupts_arch_enable(irqid_t int_id, bool en)
 
 void interrupts_arch_handle()
 {
+    #if (IRQC == AIA)
+    unsigned long stopi = CSRR(CSR_STOPI);
+
+    stopi = stopi >> TOPI_IID_SHIFT;
+    switch (stopi) {
+    case IRQ_S_SOFT:
+        // We should not be receiving this
+        // interrupts_handle(SOFT_INT_ID);
+        // CSRC(sip, SIP_SSIP);
+        break;
+    case IRQ_S_TIMER:
+        interrupts_handle(TIMR_INT_ID);
+        break;
+    case IRQ_S_EXT:
+        irqc_handle();
+        break;
+    default:
+        break;
+    }
+    #else
     unsigned long _scause = CSRR(scause);
 
     switch (_scause) {
@@ -102,12 +126,17 @@ void interrupts_arch_handle()
             // WARNING("unkown interrupt");
             break;
     }
+    #endif
 }
 
 bool interrupts_arch_check(irqid_t int_id)
 {
     if (int_id == SOFT_INT_ID) {
+        #if (IRQC != AIA)
         return CSRR(sip) & SIP_SSIP;
+        #else
+        return irqc_get_pend(int_id);
+        #endif
     } else if (int_id == TIMR_INT_ID) {
         return CSRR(sip) & SIP_STIP;
     } else {
@@ -118,7 +147,11 @@ bool interrupts_arch_check(irqid_t int_id)
 void interrupts_arch_clear(irqid_t int_id)
 {
     if (int_id == SOFT_INT_ID) {
+        #if (IRQC != AIA)
         CSRC(sip, SIP_SSIP);
+        #else
+        irqc_clr_pend(int_id);
+        #endif
     } else if (int_id == TIMR_INT_ID) {
         /**
          * It is not actually possible to clear timer by software.
@@ -131,7 +164,7 @@ void interrupts_arch_clear(irqid_t int_id)
 
 inline bool interrupts_arch_conflict(bitmap_t* interrupt_bitmap, irqid_t int_id)
 {
-    return bitmap_get(interrupt_bitmap, int_id);
+    return !!bitmap_get(interrupt_bitmap, int_id);
 }
 
 void interrupts_arch_vm_assign(struct vm* vm, irqid_t id)

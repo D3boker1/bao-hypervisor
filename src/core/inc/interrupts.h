@@ -16,7 +16,19 @@ struct vm;
 typedef void (*irq_handler_t)(irqid_t int_id);
 
 void interrupts_init();
-bool interrupts_reserve(irqid_t int_id, irq_handler_t handler);
+/**
+ * @brief Reserves a physical interrupt for hypervisor use.
+ * 
+ *        It calls the interrupts_arch_reserve function, that returns an interrupt id. This 
+ *        interrupt id corresponds to the interrupt ID with which every operation needs to be 
+ *        carried out. Thus, after reserving an interrupt, to configure it, the returned irq ID 
+ *        must be used.
+ * 
+ * @param pint_id physical interrupt to reserve
+ * @param handler interrupt function handler
+ * @return an interrupt ID that must be used in all interrupt operations related to pint_id
+ */
+irqid_t interrupts_reserve(irqid_t int_id, irq_handler_t handler);
 
 void interrupts_cpu_sendipi(cpuid_t target_cpu, irqid_t ipi_id);
 void interrupts_cpu_enable(irqid_t int_id, bool en);
