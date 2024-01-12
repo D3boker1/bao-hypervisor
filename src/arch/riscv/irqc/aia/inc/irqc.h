@@ -154,6 +154,17 @@ static inline void irqc_clr_pend(irqid_t int_id)
     #endif
 }
 
+/**
+ * @brief Wrapper for the virtual irqc initialization function
+ *
+ * @param vm Virtual Machine
+ * @param vm_irqc_dscrp virtual irqc platform configuration
+ */
+static inline void virqc_init(struct vm* vm, const union vm_irqc_dscrp* vm_irqc_dscrp)
+{
+    vaplic_init(vm, vm_irqc_dscrp);
+}
+
 static inline void virqc_set_hw(struct vm* vm, irqid_t id)
 {
     vaplic_set_hw(vm, id);
