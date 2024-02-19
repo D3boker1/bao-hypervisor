@@ -5,7 +5,6 @@ build/*
 *.bin
 *.d
 
-configs/*
 !configs/configs.mk
 !configs/linker.ld 
 !configs/example/
