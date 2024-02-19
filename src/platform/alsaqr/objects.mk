@@ -1,0 +1,1 @@
+boards-objs-y+=alsaqr_desc.o
