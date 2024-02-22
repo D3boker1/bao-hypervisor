@@ -43,7 +43,7 @@ struct config config = {
                 },
 
                 .arch = {
-                   .irqc.plic.base = 0xc000000,
+                   .irqc.aplic.base = 0xd000000,
                 }
             },
         }
