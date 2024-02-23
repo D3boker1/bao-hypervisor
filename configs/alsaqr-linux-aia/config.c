@@ -43,8 +43,8 @@ struct config config = {
                 },
 
                 .arch = {
-                   .irqc.aplic.base = 0xd000000,
-                   .irqc.imsic.base = 0x28000000,
+                   .irqc.aia.aplic.base = 0xd000000,
+                   .irqc.aia.imsic.base = 0x28000000,
                 }
             },
         }
