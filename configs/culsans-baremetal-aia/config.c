@@ -1,6 +1,6 @@
 #include <config.h>
 
-VM_IMAGE(baremetal_image, XSTR(/home/d3boker1/Build/cva6-sdk/install64/baremetal.bin));
+VM_IMAGE(baremetal_image, XSTR(GUEST_IMGS/baremetal.bin));
 
 struct config config = {
     

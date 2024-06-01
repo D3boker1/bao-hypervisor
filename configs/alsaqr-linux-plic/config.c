@@ -1,7 +1,7 @@
 #include <config.h>
 
 
-VM_IMAGE(linux_image, XSTR(/home/d3boker1/Build/cva6-sdk/install64/linux_wrapper.bin));
+VM_IMAGE(linux_image, XSTR(GUEST_IMGS/linux_wrapper.bin));
 
 struct config config = {
     
