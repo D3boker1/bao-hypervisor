@@ -33,6 +33,10 @@ struct platform platform = {
         #else
         #error "unknown IRQC type " IRQC
         #endif
+        .iommu = {
+            .base = 0x50010000,
+            .fq_irq_id = 152
+        }
     }
 
 };
