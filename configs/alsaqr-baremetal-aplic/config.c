@@ -32,7 +32,7 @@ struct config config = {
                     }
                 },
 
-                .dev_num = 1,
+                .dev_num = 2,
                 .devs =  (struct vm_dev_region[]) {
                     {   // UART
                         .pa = 0x40000000,
@@ -41,6 +41,14 @@ struct config config = {
                         .interrupt_num = 1,
                         .interrupts = (irqid_t[]) {2}
                     },
+                    {   // iDMA[0]
+                        .pa = 0x50000000,
+                        .va = 0x50000000,
+                        .size = 0x00001000,
+                        .interrupt_num = 0,
+                        .interrupts = (irqid_t[]) {},
+                        .id = 10
+                    }
                 },
 
                 .arch = {

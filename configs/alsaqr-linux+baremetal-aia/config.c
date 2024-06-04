@@ -73,17 +73,17 @@ struct config config = {
                     }
                 },
 
-                .dev_num = 0,
-                // .dev_num = 1,
-                // .devs =  (struct vm_dev_region[]) {
-                //     {   // UART
-                //         .pa = 0x40000000,
-                //         .va = 0x40000000,
-                //         .size = 0x00010000,
-                //         .interrupt_num = 1,
-                //         .interrupts = (irqid_t[]) {2}
-                //     },
-                // },
+                .dev_num = 1,
+                .devs =  (struct vm_dev_region[]) {
+                    {   // iDMA[0]
+                        .pa = 0x50000000,
+                        .va = 0x50000000,
+                        .size = 0x00001000,
+                        .interrupt_num = 0,
+                        .interrupts = (irqid_t[]) {},
+                        .id = 10
+                    }
+                },
 
                 .arch = {
                    .irqc.aia.aplic.base = 0xd000000,
